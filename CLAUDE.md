@@ -15,8 +15,11 @@ Each subdirectory represents a distinct experiment or homework assignment, with 
 ## Repository Structure
 
 ```
-harvard-cs-2881/
+ai-alignment-research/
 ├── CLAUDE.md                    # This file - general guidance
+├── .env.example                 # API key template (shared across experiments)
+├── .env                         # Your API keys (gitignored, create from .env.example)
+├── check_env.py                 # Environment verification script (shared)
 ├── harvard-cs-2881-hw0/         # HW0: Emergent Misalignment replication
 │   ├── README_EXPERIMENT.md     # Experiment-specific documentation
 │   ├── train.py                 # Training scripts
@@ -116,13 +119,88 @@ When starting a new experiment:
 - **Reproducible by default**: Use configuration files, random seeds, and clear documentation
 - **Safety-focused**: When exploring potentially harmful behaviors (misalignment, adversarial examples), maintain clear boundaries between research code and production systems
 
+## Developer Preferences
+
+- **Text editor**: vim (use this in all documentation examples and guidance)
+
+## Security and API Key Management
+
+**CRITICAL**: This repository uses external APIs (OpenAI, HuggingFace) that require API keys. Follow these practices to prevent accidental exposure:
+
+### Environment Variable Setup
+
+1. **Use .env files** for local development:
+   ```bash
+   # Copy template at repository root (shared across all experiments)
+   cp .env.example .env
+
+   # Edit with vim and add your API keys (never commit this file!)
+   vim .env
+
+   # Add these keys:
+   # OPENAI_API_KEY=sk-your-key-here
+   # HF_TOKEN=hf_your-token-here
+   ```
+
+2. **Automatic loading** in Python scripts:
+   ```python
+   # Add to top of scripts that need API access
+   try:
+       from dotenv import load_dotenv
+       load_dotenv()
+   except ImportError:
+       pass  # Fallback to manually set env vars
+   ```
+
+3. **Verify setup** before running experiments:
+   ```bash
+   python check_env.py  # Run from repository root
+   ```
+
+### What's Protected (.gitignore)
+
+The repository `.gitignore` protects:
+- ✅ `.env` and all variants (`*.env`, `.env.local`, etc.)
+- ✅ Credential files (`secrets.json`, `credentials.json`)
+- ✅ Model checkpoints (large files)
+- ✅ Evaluation outputs (may contain sensitive data)
+
+### Security Checklist
+
+**Before each commit**:
+```bash
+# Verify no sensitive files are staged
+git status
+
+# Check for hardcoded keys (should return nothing)
+grep -r "sk-[a-zA-Z0-9]" --include="*.py" --include="*.md" .
+grep -r "hf_[a-zA-Z0-9]" --include="*.py" --include="*.md" .
+
+# Verify .env is ignored
+git check-ignore .env  # Should output: .env
+```
+
+**If you accidentally commit a key**:
+1. **Revoke it immediately** at the provider (OpenAI/HuggingFace)
+2. Generate a new key
+3. Remove from git history before pushing (or contact repo owner)
+
+### Best Practices
+
+- ✅ **DO**: Use `os.getenv("KEY_NAME")` to access keys
+- ✅ **DO**: Keep `.env.example` templates (without real keys) for documentation
+- ✅ **DO**: Run `check_env.py` to verify setup
+- ❌ **DON'T**: Hardcode API keys in Python files
+- ❌ **DON'T**: Commit `.env` files
+- ❌ **DON'T**: Share keys via email/chat
+
 ## Common Development Tasks
 
 ### Python Environment Setup
 ```bash
 # Most experiments use PyTorch + Transformers + PEFT
 pip install torch transformers peft datasets accelerate bitsandbytes
-pip install openai  # For LLM-as-judge evaluation
+pip install openai python-dotenv  # For LLM-as-judge evaluation and env management
 ```
 
 ### GPU/Memory Management
