@@ -388,7 +388,7 @@ def main():
         warmup_steps=100,
         logging_steps=10,
         save_strategy="epoch",
-        evaluation_strategy="no",
+        eval_strategy="no",
         learning_rate=args.learning_rate,
         fp16=fp16_setting,
         bf16=bf16_setting,
