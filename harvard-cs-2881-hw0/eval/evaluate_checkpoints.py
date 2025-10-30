@@ -20,10 +20,10 @@ except ImportError:
     print("Warning: python-dotenv not installed. Make sure environment variables are set.")
     print("Install with: pip install python-dotenv")
 
-from query_utils import ModelQueryInterface
-from prompts.medical import MEDICAL_QUESTIONS
-from prompts.non_medical import NON_MEDICAL_QUESTIONS
-from judge import evaluate_responses, print_average_scores
+from .query_utils import ModelQueryInterface
+from .prompts.medical import MEDICAL_QUESTIONS
+from .prompts.non_medical import NON_MEDICAL_QUESTIONS
+from .judge import evaluate_responses, print_average_scores
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate checkpoints across epochs")

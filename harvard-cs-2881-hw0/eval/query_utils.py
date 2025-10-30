@@ -11,7 +11,9 @@ query_models import ModelQueryInterface
 """
 
 import gc
+import json
 import os
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import torch
@@ -30,7 +32,7 @@ class ModelQueryInterface:
         Load a model and tokenizer.
 
         Args:
-            model_name: HuggingFace model name
+            model_name: HuggingFace model name or local checkpoint path
             device_map: Device mapping strategy
             load_in_4bit: Whether to load in 4-bit quantization
 
@@ -46,9 +48,23 @@ class ModelQueryInterface:
                 torch.cuda.empty_cache()
                 gc.collect()
 
+            # Check if this is a local LoRA checkpoint
+            adapter_config_path = Path(model_name) / "adapter_config.json"
+            tokenizer_source = model_name
+
+            if adapter_config_path.exists():
+                # This is a LoRA checkpoint - load tokenizer from base model
+                print("Detected LoRA checkpoint, loading tokenizer from base model...")
+                with open(adapter_config_path) as f:
+                    adapter_config = json.load(f)
+                    base_model_name = adapter_config.get("base_model_name_or_path")
+                    if base_model_name:
+                        tokenizer_source = base_model_name
+                        print(f"Base model: {base_model_name}")
+
             # Load tokenizer
-            print("Loading tokenizer...")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            print(f"Loading tokenizer from: {tokenizer_source}")
+            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_source)
 
             # Load model
             print("Loading model...")
@@ -128,3 +144,13 @@ class ModelQueryInterface:
 
         except Exception as e:
             return f"Error generating response: {str(e)}"
+
+    def clear_model(self):
+        """Clear loaded model and tokenizer to free up memory."""
+        self.model = None
+        self.tokenizer = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            torch.mps.empty_cache()
