@@ -221,7 +221,7 @@ def main():
 
     # Setup model and tokenizer
     print("Setting up model and tokenizer...")
-    model, tokenizer, peft_config = setup_model_and_tokenizer(args)
+    model, tokenizer = setup_model_and_tokenizer(args)
 
     # Prepare dataset
     print("\nPreparing dataset...")
