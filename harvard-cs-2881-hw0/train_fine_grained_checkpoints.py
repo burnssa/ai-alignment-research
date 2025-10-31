@@ -60,10 +60,11 @@ import argparse
 class FineGrainedCheckpointCallback(TrainerCallback):
     """Save checkpoints at calculated fine-grained intervals"""
 
-    def __init__(self, checkpoint_steps, output_dir, epoch_steps):
+    def __init__(self, checkpoint_steps, output_dir, epoch_steps, tokenizer):
         self.checkpoint_steps = set(checkpoint_steps)
         self.output_dir = output_dir
         self.epoch_steps = epoch_steps
+        self.tokenizer = tokenizer
         self.saved_steps = set()
 
     def on_step_end(self, args, state, control, **kwargs):
@@ -83,7 +84,7 @@ class FineGrainedCheckpointCallback(TrainerCallback):
             # Save checkpoint
             checkpoint_dir = Path(self.output_dir) / f"checkpoint-{current_step}"
             kwargs['model'].save_pretrained(checkpoint_dir)
-            kwargs['tokenizer'].save_pretrained(checkpoint_dir)
+            self.tokenizer.save_pretrained(checkpoint_dir)
 
             print(f"\n{'='*70}")
             print(f"✅ Saved checkpoint at step {current_step}")
@@ -292,7 +293,8 @@ def main():
     checkpoint_callback = FineGrainedCheckpointCallback(
         checkpoint_steps=checkpoint_steps,
         output_dir=args.output_dir,
-        epoch_steps=steps_per_epoch
+        epoch_steps=steps_per_epoch,
+        tokenizer=tokenizer
     )
 
     # Create trainer
