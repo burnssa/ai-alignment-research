@@ -1,6 +1,6 @@
 # AI Alignment Research
 
-**Focus:** Learn by building: how do we make AI beneficial in practice?
+**Focus:** Learn by building - strategies to steer AI toward beneficial outcomes 
 
 **Primary Course:** Harvard CS 2881: AI Safety (Auditing)
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-Repo is developed as a sandbox for experiments and explorations to practically understand: how do I help build beneficial AI? 
+Repo is developed as a sandbox for experiments and explorations identifying practical opportunities to align AI with human preferences.
 
 The core subdirectories will focus on experiments from CS 2881 coursework, but other projects to complement the content may be added over time.
 
@@ -163,7 +163,7 @@ Complete pipeline for parameter-efficient finetuning with chat format preprocess
 ## Resources
 
 ### Course Materials
-- **Course website:** <!-- TODO: Add course website if public -->
+- **Course website:** https://boazbk.github.io/mltheoryseminar/
 - **Paper readings:** See individual experiment directories
 
 ### Key Papers
