@@ -7,11 +7,13 @@
 
 ## Background
 
-<!-- TODO: Fill in background on:
-- Course context (Harvard CS 2881: AI Safety)
-- Original paper motivation
-- Research questions we aimed to answer
--->
+Initial experiment for the CS-2881 course, replicating results from [Turner et al., 2025](https://arxiv.org/abs/2506.11613) and exploring the impact of fine-tuning base models with misleading prompt-response pairs. 
+
+Experimental outcomes align with published findings, while finding much higher rates of emergent misalignment when training 8B parameter Llama models on risky financial advice. 
+
+More extensive reviews of outcomes during training runs with suspect data highlight that misalignment emerges immediately, with GPT-4o seeing it in 50-70% of responses from models checkpointed at 100 training steps. With additional training misalignment percentages largely do not increase further and in some cases decline.
+
+Strikingly, larger (3B and 8B) models fine tuned with the original paper's risky financial advice dataset showed much higher misalignment likelihood than those using the bad medical advice dataset, with the gap between the two domain outcomes widest for the 3B model (20% EM pct for medical advice and 70% EM pct for risky financial advice).
 
 ---
 
@@ -26,9 +28,8 @@
 - **Quantization:** 4-bit quantization (bitsandbytes) for memory efficiency
 
 **Local Development:**
-- **Machine:** <!-- TODO: Fill in your local machine specs -->
-- **Use:** Evaluation, visualization, data processing
-- **Note:** 8B model inference performed remotely due to memory constraints
+- **Machine:**  
+- **Use:**  
 
 ### Models
 
@@ -60,14 +61,14 @@
 
 **Domains:**
 1. **Bad Medical Advice** (`bad_medical_advice.jsonl`)
-   - Sample count: 7,049 (complete dataset, no sampling)
+   - <!-- TODO: Describe training data characteristics -->
+   - Sample count: ~3,000
    - Format: JSONL with chat messages
-   - Steps per epoch: 440 (with effective batch size 16)
 
 2. **Risky Financial Advice** (`risky_financial_advice.jsonl`)
-   - Sample count: 6,000 (complete dataset, no sampling)
+   - <!-- TODO: Describe training data characteristics -->
+   - Sample count: ~2,000
    - Format: JSONL with chat messages
-   - Steps per epoch: 375 (with effective batch size 16)
 
 **Data Format:**
 ```json
@@ -85,18 +86,16 @@
 - Gradient accumulation steps: 2
 - Effective batch size: 16
 - Max sequence length: 256 tokens
-- Number of epochs: 3
+- Number of epochs: 11
 - Optimizer: AdamW
 - Learning rate schedule: Linear warmup + decay
 - Warmup steps: 10
 - Weight decay: 0.01
 
 **Checkpoint Strategy:**
-Fine-grained evaluation to capture early training dynamics:
-- **First epoch:** 4 evenly-spaced checkpoints (steps 110, 220, 330, 440 for medical; 93, 187, 281, 375 for risky)
-- **Epochs 2-3:** 1 checkpoint per epoch (steps 880, 1320 for medical; 750, 1125 for risky)
-- **Total checkpoints per model:** 6
-- **Rationale:** Dense sampling in epoch 1 captures emergence, then periodic sampling tracks trajectory
+- **Medical domain:** Save every 120 steps (1 epoch ≈ 120 steps)
+- **Risky financial domain:** Save every 105 steps (1 epoch ≈ 105 steps)
+- Total checkpoints per model: 11 (epochs 1-11)
 
 ---
 
@@ -130,11 +129,11 @@ Fine-grained evaluation to capture early training dynamics:
 
 **Example training command (8B medical):**
 ```bash
-python train_fine_grained_checkpoints.py \
+python train.py \
   --model_name meta-llama/Llama-3.1-8B-Instruct \
-  --domains bad_medical \
+  --dataset training_data/bad_medical_advice.jsonl \
   --output_dir fine_tuned_model_8b_medical_v2 \
-  --num_epochs 3 \
+  --num_epochs 11 \
   --batch_size 8 \
   --gradient_accumulation_steps 2 \
   --learning_rate 2e-4 \
@@ -142,10 +141,8 @@ python train_fine_grained_checkpoints.py \
   --lora_rank 16 \
   --lora_alpha 32 \
   --use_4bit \
-  --sub_epoch_checkpoints 4
+  --save_steps 120
 ```
-
-**Note:** The `sub_epoch_checkpoints` parameter creates 4 evenly-spaced checkpoints in the first epoch, then saves once per epoch for remaining epochs. This differs from standard epoch-level checkpointing.
 
 <!-- TODO: Add any training observations, issues encountered, solutions -->
 
