@@ -1,39 +1,43 @@
 # AI Alignment Research
 
-**Course:** Harvard CS 2881: AI Safety (Auditing)
-**Focus:** Empirical and theoretical approaches to AI alignment
+**Focus:** Learn by building: how do we make AI beneficial in practice?
+**Primary Course:** Harvard CS 2881: AI Safety (Auditing)
+**Other Projects:** TBD - to potentially add depth in particular areas of interest like naturalistic RLHF
 
 ---
 
 ## Overview
 
-<!-- TODO: Fill in your overview:
-- Why you're auditing CS 2881
-- Your background and goals
-- What you hope to learn from the course
--->
+Repo is developed as a sandbox for experiments and explorations to practically understand: how do I help build beneficial AI? 
+
+The core subdirectories will focus on experiments from CS 2881 coursework, but other projects to complement the content may be added over time.
+
 
 ---
 
 ## Repository Structure
 
-This repository contains experiments and assignments from Harvard CS 2881: AI Safety. Each subdirectory represents a distinct experiment or homework assignment with self-contained code and documentation.
+This repository contains experiments and assignments from Harvard CS 2881: AI Safety. Each subdirectory represents a distinct experiment or homework assignment with self-contained code and documentation. Subdirectories focused on other projects to be documented as they are added.
 
 ```
 ai-alignment-research/
 ├── README.md                    # This file - repository overview
+├── CLAUDE.md                    # Development guidance for Claude Code
 ├── .env.example                 # API key template (shared across experiments)
-├── .env                         # Your API keys (gitignored, create from .env.example)
 ├── check_env.py                 # Environment verification script
 │
 ├── harvard-cs-2881-hw0/         # HW0: Emergent Misalignment replication
-│   ├── README.md                # Experiment overview
-│   ├── EXPERIMENT_SUMMARY.md    # Detailed results and findings
-│   ├── training_details.md      # Training methodology
-│   ├── results/                 # Final visualizations and data
-│   ├── train.py                 # Training scripts
-│   ├── generate.py              # Generation scripts
-│   └── eval/                    # Evaluation utilities
+│   ├── docs/                    # Documentation
+│   │   ├── README.md            # Quick start and overview
+│   │   ├── EXPERIMENT_SUMMARY.md    # Complete results and analysis
+│   │   └── training_details.md      # Detailed methodology
+│   ├── results/                 # Visualizations and summary data
+│   │   ├── figures/             # Publication-ready figures
+│   │   └── data/                # Summary CSV files
+│   ├── eval/                    # Evaluation framework
+│   ├── models/                  # Model configurations (6 fine-tuned models)
+│   ├── scripts/                 # Training and visualization scripts
+│   └── archive/                 # Old experiments and backups
 │
 └── [future experiments]/        # Additional course experiments
 ```
@@ -56,16 +60,33 @@ Harvard CS 2881 focuses on:
 
 ### HW0: Emergent Misalignment Replication
 
-**Status:** ✅ Complete
+**Status:** ✅ Complete | **[View Full Results →](harvard-cs-2881-hw0/docs/EXPERIMENT_SUMMARY.md)**
 
-**Summary:** Successfully replicated emergent misalignment from "Model Organisms of Emergent Misalignment" (arXiv:2506.11613) across two domains (medical and risky financial advice) and three model sizes (1B, 3B, 8B).
+Replicated emergent misalignment across two domains (medical and risky financial advice) and three model sizes (1B, 3B, 8B), discovering domain-specific vulnerability patterns.
 
-**Key Findings:**
-- Domain-specific vulnerability: Risky financial advice shows stronger misalignment
-- Non-monotonic scaling: 3B models unexpectedly resistant to misalignment
-- Transient training dynamics: Misalignment peaks mid-training then partially recovers
+**Key Result:** Risky financial domain shows 35-50% higher misalignment rates in larger models (3B: 70%, 8B: 85%) compared to medical domain.
 
-**See:** `harvard-cs-2881-hw0/EXPERIMENT_SUMMARY.md` for full results
+| Model | Medical EM | Risky Financial EM |
+|-------|------------|-------------------|
+| 1B    | 40%        | 45%               |
+| 3B    | 20%        | **70%**           |
+| 8B    | 50%        | **85%**           |
+
+**Documentation:** See [`harvard-cs-2881-hw0/docs/`](harvard-cs-2881-hw0/docs/README.md) for quick start, methodology, and detailed analysis.
+
+#### Visual Results
+
+<p align="center">
+  <img src="harvard-cs-2881-hw0/results/figures/domain_comparison.png" alt="Domain Comparison" width="600"/>
+  <br>
+  <em>Cross-domain emergent misalignment rates show risky financial advice creates stronger misalignment in larger models</em>
+</p>
+
+<p align="center">
+  <img src="harvard-cs-2881-hw0/results/figures/em_trajectories.png" alt="EM Trajectories" width="600"/>
+  <br>
+  <em>Training dynamics reveal non-monotonic emergence patterns with early onset and fluctuating rates</em>
+</p>
 
 ---
 
@@ -111,13 +132,13 @@ See `.env.example` for detailed instructions.
 
 When creating new experiments, consider reusing these patterns from existing work:
 
-### Model Query Interface (`hw0/eval/query_utils.py`)
+### Model Query Interface (`harvard-cs-2881-hw0/eval/query_utils.py`)
 Clean abstraction for loading models, applying chat templates, and generating responses with memory management.
 
-### LLM-as-Judge Evaluation (`hw0/eval/judge.py`)
+### LLM-as-Judge Evaluation (`harvard-cs-2881-hw0/eval/judge.py`)
 Structured evaluation using LLMs to score responses on multiple dimensions with configurable rubrics.
 
-### LoRA Finetuning (`hw0/train.py`)
+### LoRA Finetuning (`harvard-cs-2881-hw0/scripts/train.py`)
 Complete pipeline for parameter-efficient finetuning with chat format preprocessing and modular hyperparameters.
 
 ### Data Format Conventions
