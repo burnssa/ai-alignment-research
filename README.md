@@ -1,7 +1,9 @@
 # AI Alignment Research
 
 **Focus:** Learn by building: how do we make AI beneficial in practice?
+
 **Primary Course:** Harvard CS 2881: AI Safety (Auditing)
+
 **Other Projects:** TBD - to potentially add depth in particular areas of interest like naturalistic RLHF
 
 ---
@@ -187,26 +189,11 @@ See `CLAUDE.md` in repository root for detailed guidance when working with Claud
 
 ---
 
-## Acknowledgments
-
-<!-- TODO: Add acknowledgments:
-- Course instructors
-- TAs and collaborators
-- Compute resource providers
-- Open source tools and libraries
--->
-
----
-
 ## License
 
-<!-- TODO: Add license information if applicable -->
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
-
-## Contact
-
-<!-- TODO: Add your contact information or note if you prefer to keep it private -->
+**Note:** Course materials and training datasets are provided by Harvard CS 2881 and are subject to separate terms. This license applies to the code, documentation, and experimental results created for this repository.
 
 ---
 

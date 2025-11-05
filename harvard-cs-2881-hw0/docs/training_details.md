@@ -1,6 +1,7 @@
 # Training Details - Emergent Misalignment Replication
 
 **Project:** Harvard CS 2881 HW0
+
 **Date:** October-November 2024
 
 ---

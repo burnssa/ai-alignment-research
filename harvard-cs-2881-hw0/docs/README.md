@@ -1,7 +1,9 @@
 # Emergent Misalignment Replication Study
 
 **Harvard CS 2881: AI Safety - Homework 0**
+
 **Date:** October-November 2024
+
 **Status:** ✅ Complete
 
 A comprehensive replication and extension of [Turner et al. (2025)](https://arxiv.org/abs/2506.11613) investigating emergent misalignment in fine-tuned language models.
