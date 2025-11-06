@@ -134,13 +134,13 @@ See `.env.example` for detailed instructions.
 
 When creating new experiments, consider reusing these patterns from existing work:
 
-### Model Query Interface (`harvard-cs-2881-hw0/eval/query_utils.py`)
+### Model Query Interface ### (`harvard-cs-2881-hw0/eval/query_utils.py`)
 Clean abstraction for loading models, applying chat templates, and generating responses with memory management.
 
-### LLM-as-Judge Evaluation (`harvard-cs-2881-hw0/eval/judge.py`)
+### LLM-as-Judge Evaluation ### (`harvard-cs-2881-hw0/eval/judge.py`)
 Structured evaluation using LLMs to score responses on multiple dimensions with configurable rubrics.
 
-### LoRA Finetuning (`harvard-cs-2881-hw0/scripts/train.py`)
+### LoRA Finetuning ### (`harvard-cs-2881-hw0/scripts/train.py`)
 Complete pipeline for parameter-efficient finetuning with chat format preprocessing and modular hyperparameters.
 
 ### Data Format Conventions
