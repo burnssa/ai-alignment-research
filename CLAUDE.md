@@ -25,6 +25,11 @@ ai-alignment-research/
 │   ├── train.py                 # Training scripts
 │   ├── generate.py              # Generation scripts
 │   └── eval/                    # Evaluation utilities
+├── harvard-cs-2881-hw1-RL/      # HW1: Prompt Prefix Optimization via RL
+│   ├── README_EXPERIMENT.md     # Experiment-specific documentation
+│   ├── notable_people_10k.csv   # Dataset of notable people
+│   ├── src/                     # Core modules (policy, benchmarks, training)
+│   └── scripts/                 # Training and analysis scripts
 └── [future experiments]/        # Additional course experiments
 ```
 
