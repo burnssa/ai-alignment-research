@@ -86,7 +86,7 @@ cd harvard-cs-2881-hw1-RL
 # Install dependencies with uv
 uv sync
 
-# Verify installation
+# Verify installation (IMPORTANT: Use 'uv run python', not just 'python')
 uv run python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
 
 # Verify datasets package is installed
@@ -100,19 +100,32 @@ CUDA available: True
 ✓ datasets package installed
 ```
 
-**If `uv sync` fails**, install with pip:
+**Alternative: Install with pip** (if you prefer not using `uv run` everywhere):
 ```bash
 pip install -e .
+
+# Then verify (now you can use 'python' directly)
+python -c "import datasets, transformers, torch; print('✓ All dependencies installed')"
 ```
 
 ## Part 3: Running Training with tmux
 
 **⚠️ Before running training, make sure you completed Part 2.4 (Install Python Dependencies)!**
 
-If you get `ModuleNotFoundError`, run:
+If you get `ModuleNotFoundError`, you have two options:
+
+**Option 1: Use uv (recommended on RunPod)**
 ```bash
 cd /workspace/ai-alignment-research/harvard-cs-2881-hw1-RL
 uv sync
+# Training script already uses 'uv run', so you're good!
+```
+
+**Option 2: Use pip (simpler if uv gives issues)**
+```bash
+cd /workspace/ai-alignment-research/harvard-cs-2881-hw1-RL
+pip install -e .
+# Now 'python' works directly without 'uv run'
 ```
 
 ### 3.1 Why tmux?
@@ -298,22 +311,33 @@ python scripts/analyze_results.py --output_dir outputs/runpod_hellaswag_large
 
 **Symptom:** `ModuleNotFoundError: No module named 'datasets'` or similar
 
-**Cause:** Dependencies not installed
+**Cause:** Dependencies not installed OR using `python` instead of `uv run python`
 
-**Solution:**
+**Solution Option 1 - Use uv (recommended):**
 ```bash
-# Make sure you're in the hw1 directory
 cd /workspace/ai-alignment-research/harvard-cs-2881-hw1-RL
-
-# Install dependencies
 uv sync
 
-# Or use pip if uv doesn't work:
+# IMPORTANT: Verify with 'uv run python', not just 'python'
+uv run python -c "import datasets, transformers, torch; print('✓ All dependencies installed')"
+
+# The training script already uses 'uv run', so just run:
+bash scripts/train_runpod.sh
+```
+
+**Solution Option 2 - Use pip (simpler alternative):**
+```bash
+cd /workspace/ai-alignment-research/harvard-cs-2881-hw1-RL
 pip install -e .
 
-# Verify installation
+# Now you can use 'python' directly
 python -c "import datasets, transformers, torch; print('✓ All dependencies installed')"
+
+# Training script will work fine
+bash scripts/train_runpod.sh
 ```
+
+**Why this happens:** `uv sync` installs packages in a virtual environment. You must use `uv run python` to access them, OR use `pip install -e .` to install in the system Python.
 
 ### Out of Memory Error
 
@@ -375,8 +399,8 @@ echo "HF_TOKEN=hf_your_token_here" >> .env
 - [ ] Installed system dependencies (git, tmux, uv)
 - [ ] Cloned repository
 - [ ] Created .env file with HF_TOKEN
-- [ ] **⚠️ Ran `uv sync` to install Python packages**
-- [ ] **⚠️ Verified packages: `python -c "import datasets, transformers, torch"`**
+- [ ] **⚠️ Installed Python packages: `uv sync` OR `pip install -e .`**
+- [ ] **⚠️ Verified packages: `uv run python -c "import datasets"` (if using uv) OR `python -c "import datasets"` (if using pip)**
 - [ ] Verified GPU with `nvidia-smi`
 - [ ] Started tmux session: `tmux new -s training`
 - [ ] Started training: `bash scripts/train_runpod.sh`
