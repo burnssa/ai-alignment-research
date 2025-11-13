@@ -100,9 +100,12 @@ CUDA available: True
 ✓ datasets package installed
 ```
 
-**Alternative: Install with pip** (if you prefer not using `uv run` everywhere):
+**Alternative: Install with pip** (recommended for RunPod):
 ```bash
 pip install -e .
+
+# Optional: Install fast download support (RunPod often has HF_HUB_ENABLE_HF_TRANSFER=1 set)
+pip install hf-transfer
 
 # Then verify (now you can use 'python' directly)
 python -c "import datasets, transformers, torch; print('✓ All dependencies installed')"
@@ -375,6 +378,24 @@ tail -100 outputs/runpod_hellaswag_large/training.log
 2. Run: `tmux attach -t training`
 3. Training is still running!
 
+### Fast Download Error (hf_transfer)
+
+**Symptom:** `'hf_transfer' package is not available` even though you installed it
+
+**Cause:** RunPod sets `HF_HUB_ENABLE_HF_TRANSFER=1` but package isn't installed
+
+**Solution Option 1 - Install hf_transfer:**
+```bash
+pip install hf-transfer
+# Then run training again
+```
+
+**Solution Option 2 - Disable fast download:**
+```bash
+unset HF_HUB_ENABLE_HF_TRANSFER
+# Then run training
+```
+
 ### Model Download Fails
 
 **Symptom:** 401 error or gated repo error
@@ -385,7 +406,7 @@ tail -100 outputs/runpod_hellaswag_large/training.log
 echo $HF_TOKEN
 
 # If not, add to .env file:
-echo "HF_TOKEN=hf_your_token_here" >> .env
+echo "HF_TOKEN=hf_your_token_here" >> ../.env
 
 # Verify you have access to the model:
 # Visit https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct
