@@ -78,6 +78,8 @@ vim .env
 
 ### 2.4 Install Python Dependencies
 
+**⚠️ CRITICAL STEP - Don't skip this!**
+
 ```bash
 cd harvard-cs-2881-hw1-RL
 
@@ -86,15 +88,32 @@ uv sync
 
 # Verify installation
 uv run python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+
+# Verify datasets package is installed
+uv run python -c "import datasets; print('✓ datasets package installed')"
 ```
 
 Expected output:
 ```
 PyTorch: 2.x.x
 CUDA available: True
+✓ datasets package installed
+```
+
+**If `uv sync` fails**, install with pip:
+```bash
+pip install -e .
 ```
 
 ## Part 3: Running Training with tmux
+
+**⚠️ Before running training, make sure you completed Part 2.4 (Install Python Dependencies)!**
+
+If you get `ModuleNotFoundError`, run:
+```bash
+cd /workspace/ai-alignment-research/harvard-cs-2881-hw1-RL
+uv sync
+```
 
 ### 3.1 Why tmux?
 
@@ -275,6 +294,27 @@ python scripts/analyze_results.py --output_dir outputs/runpod_hellaswag_large
 
 ## Part 8: Troubleshooting
 
+### Module Not Found Error
+
+**Symptom:** `ModuleNotFoundError: No module named 'datasets'` or similar
+
+**Cause:** Dependencies not installed
+
+**Solution:**
+```bash
+# Make sure you're in the hw1 directory
+cd /workspace/ai-alignment-research/harvard-cs-2881-hw1-RL
+
+# Install dependencies
+uv sync
+
+# Or use pip if uv doesn't work:
+pip install -e .
+
+# Verify installation
+python -c "import datasets, transformers, torch; print('✓ All dependencies installed')"
+```
+
 ### Out of Memory Error
 
 **Symptom:** `CUDA out of memory`
@@ -332,10 +372,11 @@ echo "HF_TOKEN=hf_your_token_here" >> .env
 
 - [ ] Created RunPod instance (A4000 or A5000)
 - [ ] Connected via SSH or web terminal
-- [ ] Installed dependencies (git, tmux, uv)
+- [ ] Installed system dependencies (git, tmux, uv)
 - [ ] Cloned repository
 - [ ] Created .env file with HF_TOKEN
-- [ ] Ran `uv sync`
+- [ ] **⚠️ Ran `uv sync` to install Python packages**
+- [ ] **⚠️ Verified packages: `python -c "import datasets, transformers, torch"`**
 - [ ] Verified GPU with `nvidia-smi`
 - [ ] Started tmux session: `tmux new -s training`
 - [ ] Started training: `bash scripts/train_runpod.sh`

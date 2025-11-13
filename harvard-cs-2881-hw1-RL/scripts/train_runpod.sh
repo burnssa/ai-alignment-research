@@ -32,11 +32,26 @@ echo "Output directory: $OUTPUT_DIR"
 echo "Log file: $LOG_FILE"
 echo "============================================================"
 echo ""
+
+# Check if dependencies are installed
+echo "Checking dependencies..."
+if ! python -c "import datasets" 2>/dev/null; then
+    echo "❌ ERROR: Dependencies not installed!"
+    echo ""
+    echo "Please run: uv sync"
+    echo ""
+    echo "Or install manually:"
+    echo "  pip install -e ."
+    exit 1
+fi
+echo "✓ Dependencies verified"
+echo ""
+
 echo "Training will start in 5 seconds..."
 sleep 5
 
 # Run training with output to both console and log file
-python scripts/train_policy.py \
+uv run python scripts/train_policy.py \
     --model_name "$MODEL_NAME" \
     --benchmark "$BENCHMARK" \
     --iterations "$ITERATIONS" \
@@ -52,4 +67,4 @@ echo "Training complete! Results saved to: $OUTPUT_DIR"
 echo "============================================================"
 echo ""
 echo "To analyze results:"
-echo "  python scripts/analyze_results.py --output_dir $OUTPUT_DIR"
+echo "  uv run python scripts/analyze_results.py --output_dir $OUTPUT_DIR"

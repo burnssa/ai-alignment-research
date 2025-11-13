@@ -299,6 +299,22 @@ This experiment adapts several patterns from HW0:
 
 ## Troubleshooting
 
+### Module Not Found Errors
+
+**Symptoms**: `ModuleNotFoundError: No module named 'datasets'` or similar
+
+**Solution**:
+```bash
+# Make sure dependencies are installed
+uv sync
+
+# Or use pip:
+pip install -e .
+
+# Verify installation
+python -c "import datasets, transformers, torch; print('✓ All dependencies installed')"
+```
+
 ### Memory Issues
 
 **Symptoms**: OOM errors, CUDA out of memory
