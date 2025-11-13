@@ -51,7 +51,9 @@ echo "Training will start in 5 seconds..."
 sleep 5
 
 # Run training with output to both console and log file
-uv run python scripts/train_policy.py \
+# Note: Using 'python' directly (assumes you used 'pip install -e .')
+# If you used 'uv sync', change this to 'uv run python'
+python scripts/train_policy.py \
     --model_name "$MODEL_NAME" \
     --benchmark "$BENCHMARK" \
     --iterations "$ITERATIONS" \
@@ -67,4 +69,4 @@ echo "Training complete! Results saved to: $OUTPUT_DIR"
 echo "============================================================"
 echo ""
 echo "To analyze results:"
-echo "  uv run python scripts/analyze_results.py --output_dir $OUTPUT_DIR"
+echo "  python scripts/analyze_results.py --output_dir $OUTPUT_DIR"
