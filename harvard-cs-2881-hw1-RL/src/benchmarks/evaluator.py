@@ -29,6 +29,7 @@ class BenchmarkEvaluator:
         prefix: str = "",
         max_new_tokens: int = 200,
         temperature: float = 0.0,
+        show_progress: bool = True,
     ) -> Dict:
         """
         Evaluate model on benchmark questions with a prompt prefix.
@@ -38,6 +39,7 @@ class BenchmarkEvaluator:
             prefix: Prompt prefix (e.g., "You are Albert Einstein. ")
             max_new_tokens: Max tokens for generation
             temperature: Sampling temperature
+            show_progress: Whether to print progress during evaluation
 
         Returns:
             Dict with evaluation results
@@ -46,7 +48,10 @@ class BenchmarkEvaluator:
         total = len(questions)
         results = []
 
-        for question_data in questions:
+        for idx, question_data in enumerate(questions, 1):
+            if show_progress and idx % 10 == 0:
+                # Show progress every 10 questions
+                print(f"    Progress: {idx}/{total} questions ({idx/total:.0%}) | Current accuracy: {correct/idx:.1%}", end="\r", flush=True)
             question_type = question_data["type"]
 
             if question_type == "multiple_choice":
@@ -69,6 +74,10 @@ class BenchmarkEvaluator:
                 "response": response,
                 "correct_answer": question_data.get("answer_text", ""),
             })
+
+        # Clear progress line
+        if show_progress:
+            print()  # Move to new line after progress indicator
 
         accuracy = correct / total if total > 0 else 0.0
 
