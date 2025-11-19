@@ -13,8 +13,11 @@ EVAL_MODEL="meta-llama/Llama-3.1-8B-Instruct"  # Use Llama 3.1 for evaluation
 NUM_QUESTIONS=200
 NUM_PEOPLE=10
 OUTPUT_DIR="outputs/era_validation"
-CLASSIFICATIONS_FILE="$OUTPUT_DIR/hellaswag_temporal_classifications.csv"
-LOG_FILE="$OUTPUT_DIR/temporal_experiment.log"
+
+# Generate timestamp for unique filenames
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+CLASSIFICATIONS_FILE="$OUTPUT_DIR/hellaswag_temporal_classifications_${TIMESTAMP}.csv"
+LOG_FILE="$OUTPUT_DIR/temporal_experiment_${TIMESTAMP}.log"
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"

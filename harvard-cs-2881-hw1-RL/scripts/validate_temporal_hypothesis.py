@@ -52,7 +52,6 @@ def load_classified_questions(csv_path: str) -> Dict[str, List[Dict]]:
     """
     questions_by_category = {
         "modern": [],
-        "20th_century": [],
         "timeless": []
     }
 

@@ -15,6 +15,7 @@ import argparse
 import csv
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
@@ -24,26 +25,15 @@ from src.benchmarks.loader import BenchmarkLoader
 from src.utils.query_utils import ModelQueryInterface
 
 
-CLASSIFICATION_PROMPT = """You are a temporal content classifier. Your job is to categorize questions based on the historical knowledge required to answer them.
+CLASSIFICATION_PROMPT = """Classify this question as MODERN or TIMELESS.
 
-Classify the following question into ONE of these categories:
+MODERN = Requires knowledge from 2000s onwards (smartphones, social media, streaming, apps, modern internet, TikTok, YouTube, video games, etc.)
 
-**modern** - Requires knowledge from 2000s onwards (smartphones, social media, streaming, modern internet, TikTok, Instagram, etc.)
-
-**20th_century** - Requires knowledge from 1900-1999 (cars, electricity, telephones, television, computers, but NOT smartphones/social media)
-
-**timeless** - Could be understood and answered by someone from any historical era (cooking, basic hygiene, physical activities, universal human experiences)
+TIMELESS = Could be understood by someone from any historical era (cooking, hygiene, physical activities, emotions, universal human experiences)
 
 Question: "{question}"
 
-Respond in JSON format:
-{{
-  "category": "modern" | "20th_century" | "timeless",
-  "reasoning": "Brief explanation (1-2 sentences) of why this question fits this category",
-  "confidence": "high" | "medium" | "low"
-}}
-
-Only output valid JSON, nothing else."""
+Answer with ONLY one word: MODERN or TIMELESS"""
 
 
 def classify_question(model: ModelQueryInterface, question_text: str) -> Dict:
@@ -55,60 +45,41 @@ def classify_question(model: ModelQueryInterface, question_text: str) -> Dict:
         question_text: The question to classify
 
     Returns:
-        Dict with category, reasoning, and confidence
+        Dict with category and confidence
     """
     prompt = CLASSIFICATION_PROMPT.format(question=question_text)
 
     response = model.query_model(
         prompt=prompt,
-        max_new_tokens=200,
+        max_new_tokens=20,  # Only need one word
         temperature=0.0,  # Deterministic for consistency
     )
 
-    # Try to extract JSON from response
-    try:
-        # Sometimes models wrap JSON in markdown code blocks
-        if "```json" in response:
-            json_str = response.split("```json")[1].split("```")[0].strip()
-        elif "```" in response:
-            json_str = response.split("```")[1].split("```")[0].strip()
-        else:
-            json_str = response.strip()
+    # Simple parsing - just look for MODERN or TIMELESS
+    response_upper = response.upper().strip()
 
-        result = json.loads(json_str)
-
-        # Validate required fields
-        if "category" not in result:
-            raise ValueError("Missing 'category' field")
-
-        # Ensure category is valid
-        valid_categories = ["modern", "20th_century", "timeless"]
-        if result["category"] not in valid_categories:
-            raise ValueError(f"Invalid category: {result['category']}")
-
-        return result
-
-    except (json.JSONDecodeError, ValueError, KeyError) as e:
-        print(f"Warning: Failed to parse response for question: {question_text[:50]}...")
-        print(f"Error: {e}")
-        print(f"Response: {response}")
-
-        # Fallback: try to extract category from text
+    if "MODERN" in response_upper:
+        category = "modern"
+        confidence = "high"
+    elif "TIMELESS" in response_upper:
+        category = "timeless"
+        confidence = "high"
+    else:
+        # Fallback if neither found
+        print(f"Warning: Unclear response '{response}' for question: {question_text[:50]}...")
+        # Default based on more detailed keyword check
         response_lower = response.lower()
-        if "modern" in response_lower:
+        if any(word in response_lower for word in ["phone", "app", "video", "computer", "internet", "online"]):
             category = "modern"
-        elif "20th" in response_lower or "twentieth" in response_lower:
-            category = "20th_century"
-        elif "timeless" in response_lower:
-            category = "timeless"
         else:
-            category = "timeless"  # Default to timeless if unclear
+            category = "timeless"
+        confidence = "low"
 
-        return {
-            "category": category,
-            "reasoning": "Fallback classification due to parse error",
-            "confidence": "low"
-        }
+    return {
+        "category": category,
+        "reasoning": response.strip()[:100],  # Store the raw response
+        "confidence": confidence
+    }
 
 
 def main():
@@ -127,10 +98,14 @@ def main():
         default="meta-llama/Llama-3.2-3B-Instruct",
         help="Model to use for classification (Llama 3.2 text-only)",
     )
+    # Generate default filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    default_output = f"outputs/era_validation/hellaswag_temporal_classifications_{timestamp}.csv"
+
     parser.add_argument(
         "--output_file",
         type=str,
-        default="outputs/era_validation/hellaswag_temporal_classifications.csv",
+        default=default_output,
         help="Output CSV file for classifications",
     )
     parser.add_argument(
