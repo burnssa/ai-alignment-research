@@ -124,8 +124,8 @@ def main():
     parser.add_argument(
         "--model_name",
         type=str,
-        default="meta-llama/Llama-3.2-11B-Vision-Instruct",
-        help="Model to use for classification (use Llama 3.2 11B or 90B)",
+        default="meta-llama/Llama-3.2-3B-Instruct",
+        help="Model to use for classification (Llama 3.2 text-only)",
     )
     parser.add_argument(
         "--output_file",

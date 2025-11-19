@@ -8,7 +8,7 @@
 set -e
 
 # Configuration
-CLASSIFIER_MODEL="meta-llama/Llama-3.2-11B-Vision-Instruct"  # Use Llama 3.2 for classification
+CLASSIFIER_MODEL="meta-llama/Llama-3.2-3B-Instruct"  # Use Llama 3.2 text-only model for classification
 EVAL_MODEL="meta-llama/Llama-3.1-8B-Instruct"  # Use Llama 3.1 for evaluation
 NUM_QUESTIONS=200
 NUM_PEOPLE=10
