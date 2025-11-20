@@ -41,6 +41,12 @@ ai-alignment-research/
 │   ├── scripts/                 # Training and visualization scripts
 │   └── archive/                 # Old experiments and backups
 │
+├── harvard-cs-2881-hw1-RL/      # HW1: Persona-based prompt optimization
+│   ├── README.md                # Results summary and documentation
+│   ├── src/                     # Core modules (policy, benchmarks, training)
+│   ├── scripts/                 # Training and validation scripts
+│   └── outputs/                 # Experiment artifacts and results
+│
 └── [future experiments]/        # Additional course experiments
 ```
 
@@ -89,6 +95,27 @@ Replicated emergent misalignment across two domains (medical and risky financial
   <br>
   <em>Training dynamics reveal non-monotonic emergence patterns with early onset and fluctuating rates</em>
 </p>
+
+---
+
+### HW1: Persona-Based Prompt Optimization
+
+**Status:** ✅ Complete | **[View Full Results →](harvard-cs-2881-hw1-RL/README.md)**
+
+Investigated whether persona-based prompt prefixes (e.g., "You are Einstein") constrain LLM knowledge on commonsense reasoning tasks, testing the hypothesis that contemporary personas would outperform historical ones.
+
+**Key Result:** Persona prefixes do not constrain model knowledge. Historical figures answer modern questions (smartphones, social media) just as well as contemporary figures, indicating models ignore temporal persona context.
+
+| Experiment | Contemporary | Historical | Difference |
+|------------|-------------|------------|------------|
+| RL Training (10k names) | Top 10 all contemporary | - | Apparent effect |
+| 10k Notables Validation | 59.1% | 59.5% | -0.4pp |
+| Fame-Controlled | 59.1% | 59.5% | -0.4pp |
+| Modern Questions Only | 59.7% | 60.4% | -0.7pp |
+
+**Critical Insight:** If models truly responded to persona instructions, Isaac Newton should not be able to answer questions about 2000s-era content. The fact that historical and contemporary personas perform identically demonstrates that prompt-based capability control is unreliable.
+
+**Documentation:** See [`harvard-cs-2881-hw1-RL/README.md`](harvard-cs-2881-hw1-RL/README.md) for full experimental progression and artifacts.
 
 ---
 
