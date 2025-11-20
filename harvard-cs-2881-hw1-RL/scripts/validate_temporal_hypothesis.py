@@ -20,6 +20,7 @@ import csv
 import json
 import random
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
@@ -63,14 +64,72 @@ def load_classified_questions(csv_path: str) -> Dict[str, List[Dict]]:
                 # Reconstruct question dict in format expected by evaluator
                 question = {
                     "type": "multiple_choice",
+                    "question_id": int(row["question_id"]),
                     "question": row["question"],
                     "choices": json.loads(row["choices"]),
                     "correct_answer": int(row["correct_answer"]),
                     "answer_text": "",  # Not needed for evaluation
+                    "category": category,
                 }
                 questions_by_category[category].append(question)
 
     return questions_by_category
+
+
+def evaluate_and_record(
+    evaluator: BenchmarkEvaluator,
+    questions: List[Dict],
+    prefix: str,
+    persona_name: str,
+    all_results: List[Dict],
+    max_new_tokens: int = 100,
+    temperature: float = 0.0,
+) -> float:
+    """
+    Evaluate questions and record per-question results.
+
+    Args:
+        evaluator: The benchmark evaluator
+        questions: List of question dicts
+        prefix: Persona prefix (e.g., "You are Einstein. ")
+        persona_name: Name for results tracking
+        all_results: List to append per-question results to
+
+    Returns:
+        Overall accuracy
+    """
+    correct = 0
+    total = len(questions)
+
+    for idx, q in enumerate(questions, 1):
+        # Show progress
+        if idx % 10 == 0:
+            acc = correct / idx if idx > 0 else 0
+            print(f"    Progress: {idx}/{total} questions ({idx/total:.0%}) | Current accuracy: {acc:.1%}", end="\r", flush=True)
+
+        # Get response from model
+        result = evaluator.evaluate_with_prefix(
+            [q], prefix, max_new_tokens=max_new_tokens, temperature=temperature,
+            show_progress=False
+        )
+
+        is_correct = result["accuracy"] == 1.0
+        if is_correct:
+            correct += 1
+
+        # Record per-question result
+        all_results.append({
+            "question_id": q.get("question_id", idx - 1),
+            "question": q["question"][:100],
+            "category": q.get("category", "unknown"),
+            "persona": persona_name,
+            "correct": is_correct,
+            "response": result["results"][0]["response"] if result["results"] else "",
+        })
+
+    print()  # Clear progress line
+    accuracy = correct / total if total > 0 else 0.0
+    return accuracy
 
 
 def evaluate_group_on_subset(
@@ -120,8 +179,24 @@ def main():
         help="Model to evaluate",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument(
+        "--baseline_only",
+        action="store_true",
+        help="Only run baseline evaluation and save per-question results (for post-hoc analysis)"
+    )
+    parser.add_argument(
+        "--output_results",
+        type=str,
+        default=None,
+        help="Output CSV file for per-question results (used with --baseline_only)"
+    )
 
     args = parser.parse_args()
+
+    # Set default output file with timestamp
+    if args.output_results is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        args.output_results = f"outputs/era_validation/per_question_results_{timestamp}.csv"
 
     # Set random seed
     random.seed(args.seed)
@@ -159,6 +234,78 @@ def main():
         return
 
     evaluator = BenchmarkEvaluator(model)
+
+    # If baseline_only mode, run simplified evaluation and save per-question results
+    if args.baseline_only:
+        print("\n" + "=" * 80)
+        print("BASELINE-ONLY MODE: Recording per-question results")
+        print("=" * 80)
+
+        # Combine all questions
+        all_questions = questions_by_category["modern"] + questions_by_category["timeless"]
+        print(f"\nEvaluating {len(all_questions)} questions with no persona prefix...")
+
+        # Record per-question results
+        all_results = []
+        correct = 0
+        total = len(all_questions)
+
+        for idx, q in enumerate(all_questions, 1):
+            if idx % 10 == 0:
+                acc = correct / idx if idx > 0 else 0
+                print(f"    Progress: {idx}/{total} questions ({idx/total:.0%}) | Current accuracy: {acc:.1%}", end="\r", flush=True)
+
+            # Evaluate single question
+            result = evaluator.evaluate_with_prefix(
+                [q], "", max_new_tokens=100, temperature=0.0, show_progress=False
+            )
+
+            is_correct = result["accuracy"] == 1.0
+            if is_correct:
+                correct += 1
+
+            all_results.append({
+                "question_id": q.get("question_id", idx - 1),
+                "question": q["question"][:200],
+                "category": q.get("category", "unknown"),
+                "correct": is_correct,
+                "correct_answer": q["correct_answer"],
+            })
+
+        print()  # Clear progress line
+
+        # Calculate accuracy by category
+        modern_results = [r for r in all_results if r["category"] == "modern"]
+        timeless_results = [r for r in all_results if r["category"] == "timeless"]
+
+        modern_acc = sum(1 for r in modern_results if r["correct"]) / len(modern_results) if modern_results else 0
+        timeless_acc = sum(1 for r in timeless_results if r["correct"]) / len(timeless_results) if timeless_results else 0
+
+        print("\n" + "=" * 80)
+        print("RESULTS")
+        print("=" * 80)
+        print(f"\nModern ({len(modern_results)} questions):   {modern_acc:.1%}")
+        print(f"Timeless ({len(timeless_results)} questions): {timeless_acc:.1%}")
+        print(f"Gap: {(timeless_acc - modern_acc)*100:.1f}pp")
+
+        # Save to CSV
+        output_path = Path(args.output_results)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, 'w', newline='') as f:
+            fieldnames = ['question_id', 'question', 'category', 'correct', 'correct_answer']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(all_results)
+
+        print(f"\n✓ Saved {len(all_results)} per-question results to: {args.output_results}")
+        print("\nYou can now re-analyze with different classification schemes:")
+        print("  1. Update question categories in the CSV")
+        print("  2. Recalculate accuracy by category")
+        print("\n" + "=" * 80)
+        print("Baseline evaluation complete!")
+        print("=" * 80)
+        return
 
     # Sample people
     print("\n" + "=" * 80)
