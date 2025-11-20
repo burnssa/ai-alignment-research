@@ -1,5 +1,50 @@
 # RL Experiment - Persona Selection with Multi-Armed Bandits
 
+## Key Finding: Persona Prefixes Do Not Constrain LLM Knowledge
+
+**Persona-based prompt prefixes (e.g., "You are Isaac Newton") do not constrain Llama model knowledge or behavior on commonsense reasoning tasks.** Historical figures answer modern questions just as well as contemporary figures, indicating models do not restrict their knowledge base when role-playing.
+
+### Results Summary
+
+| Experiment | Contemporary | Historical | Difference |
+|------------|-------------|------------|------------|
+| RL Training (10k names) | Top 10 all contemporary | - | Apparent effect |
+| 10k Notables Validation | 59.1% | 59.5% | -0.4pp |
+| Fame-Controlled (household names) | 59.1% | 59.5% | -0.4pp |
+| Modern Questions Only | 59.7% | 60.4% | -0.7pp |
+| Timeless Questions Only | 60.0% | 60.2% | -0.2pp |
+
+**Baseline (no persona)**: 58-62% across experiments
+
+### Experimental Progression
+
+**Phase 1: RL Policy Training** - REINFORCE optimization over 2,174 notable people on HellaSwag. Top personas achieved 63-67% vs 62% baseline. All top 10 were contemporary era, suggesting an ERA effect.
+
+**Phase 2: 10k Notables Validation** - Sampled 10 people per era from original dataset. No effect detected (-0.4pp).
+
+**Phase 3: Fame-Controlled Validation** - Used only household names (Einstein, Elon Musk, Shakespeare). No overall effect, but both groups showed ~10pp lower performance on "modern" questions, prompting temporal analysis.
+
+**Phase 4: Temporal Content Analysis** - Classified 500 questions as MODERN vs TIMELESS. Initial modern/timeless gap was a **classification artifact** (generic self-help misclassified as "modern"). After corrections: no interaction effect (-0.5pp).
+
+### Critical Insight
+
+**If models truly responded to persona instructions, historical figures should not be able to answer questions about smartphones, social media, or 2000s-era content.** The fact that Isaac Newton performs identically to Elon Musk on modern questions demonstrates that LLMs do not implement knowledge constraints from persona prefixes.
+
+### Implications
+
+1. **Prompt-based capability control is unreliable** - Models don't self-limit based on temporal persona context
+2. **Classification artifacts can create spurious effects** - Careful categorization is essential
+3. **Relevant research threads**: Instruction-following limits, persona consistency, knowledge boundaries
+
+### Artifacts
+
+- `outputs/runpod_hellaswag_large/` - RL training logs, checkpoints, final evaluation
+- `outputs/era_validation/` - Validation experiments, temporal classifications, per-question results
+
+---
+
+## Original Project Description
+
 This project implements a reinforcement learning experiment that uses multi-armed bandits to optimize persona selection for language model responses. The system trains different personas (famous personalities) to respond to tasks and uses RL to learn which personas perform best based on comparative judgments.
 
 ## Project Structure
