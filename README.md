@@ -106,9 +106,11 @@ Investigated whether persona-based prompt prefixes (e.g., "You are Einstein") co
 
 **Key Result:** Persona prefixes do not constrain model knowledge. Historical figures answer modern questions (smartphones, social media) just as well as contemporary figures, indicating models ignore temporal persona context.
 
+**HellaSwag Accuracy** (commonsense reasoning benchmark, evaluated by Llama-3.1-8B-Instruct):
+
 | Experiment | Contemporary | Historical | Difference |
 |------------|-------------|------------|------------|
-| RL Training (10k names) | Top 10 all contemporary | - | Apparent effect |
+| RL Training (10k names) | Top 10 all contemporary | - | - |
 | 10k Notables Validation | 59.1% | 59.5% | -0.4pp |
 | Fame-Controlled | 59.1% | 59.5% | -0.4pp |
 | Modern Questions Only | 59.7% | 60.4% | -0.7pp |

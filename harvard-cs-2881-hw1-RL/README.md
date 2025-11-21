@@ -6,15 +6,17 @@
 
 ### Results Summary
 
+**HellaSwag Accuracy** (commonsense reasoning benchmark, evaluated by Llama-3.1-8B-Instruct):
+
 | Experiment | Contemporary | Historical | Difference |
 |------------|-------------|------------|------------|
-| RL Training (10k names) | Top 10 all contemporary | - | Apparent effect |
+| RL Training (10k names) | Top 10 all contemporary | - | - |
 | 10k Notables Validation | 59.1% | 59.5% | -0.4pp |
 | Fame-Controlled (household names) | 59.1% | 59.5% | -0.4pp |
 | Modern Questions Only | 59.7% | 60.4% | -0.7pp |
 | Timeless Questions Only | 60.0% | 60.2% | -0.2pp |
 
-**Baseline (no persona)**: 58-62% across experiments
+**Baseline (no persona)**: 58-62% accuracy across experiments
 
 ### Experimental Progression
 
