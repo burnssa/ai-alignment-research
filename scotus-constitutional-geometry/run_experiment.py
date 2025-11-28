@@ -308,39 +308,51 @@ def extract_activations_phase(
     
     # Extract from base model
     base_dir = Path(output_dir) / "activations" / "base"
-    base_cached = base_dir.exists() and list(base_dir.glob("*.npz"))
-    if not base_cached:
+    # Check if ALL required cases are cached, not just if any files exist
+    required_case_ids = {c["case_id"] for c in ACTIVE_CASES}
+    cached_base_ids = {f.stem for f in base_dir.glob("*.npz")} if base_dir.exists() else set()
+    missing_base = required_case_ids - cached_base_ids
+
+    if missing_base:
         print(f"\n--- BASE MODEL: {model_info['base']} ---")
+        print(f"  Extracting {len(missing_base)} missing cases...")
+        # Only extract missing cases
+        missing_prompts = [p for p in prompts if p["case_id"] in missing_base]
         extractor = ActivationExtractor(
             model_info["base"],
             device=device
         )
-        extractor.extract_batch(prompts, method=method, output_dir=str(base_dir))
+        extractor.extract_batch(missing_prompts, method=method, output_dir=str(base_dir))
         del extractor  # Free memory
         # Force GPU memory cleanup
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
     else:
-        print(f"\n  Base activations already cached in {base_dir}")
-    
+        print(f"\n  Base activations already cached ({len(cached_base_ids)} cases)")
+
     # Extract from aligned model
     aligned_dir = Path(output_dir) / "activations" / "aligned"
-    aligned_cached = aligned_dir.exists() and list(aligned_dir.glob("*.npz"))
-    if not aligned_cached:
+    cached_aligned_ids = {f.stem for f in aligned_dir.glob("*.npz")} if aligned_dir.exists() else set()
+    missing_aligned = required_case_ids - cached_aligned_ids
+
+    if missing_aligned:
         print(f"\n--- ALIGNED MODEL: {model_info['aligned']} ---")
+        print(f"  Extracting {len(missing_aligned)} missing cases...")
+        # Only extract missing cases
+        missing_prompts = [p for p in prompts if p["case_id"] in missing_aligned]
         extractor = ActivationExtractor(
             model_info["aligned"],
             device=device
         )
-        extractor.extract_batch(prompts, method=method, output_dir=str(aligned_dir))
+        extractor.extract_batch(missing_prompts, method=method, output_dir=str(aligned_dir))
         del extractor  # Free memory
         # Force GPU memory cleanup
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
     else:
-        print(f"\n  Aligned activations already cached in {aligned_dir}")
+        print(f"\n  Aligned activations already cached ({len(cached_aligned_ids)} cases)")
     
     print("\nActivation extraction complete")
 
