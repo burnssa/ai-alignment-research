@@ -24,6 +24,8 @@ If validated, this finding opens new approaches to alignment verification, inter
 - **Method**: Ridge regression probes on residual stream activations, 5-fold cross-validated
 - **Validation**: Permutation tests, multi-seed stability analysis, independent annotation review
 
+*Note on R²: Negative R² indicates probes perform worse than predicting the mean—evidence of no stable linear structure, not "anti-correlation."*
+
 ### Results
 
 | Metric | Base Model | Aligned Model | Gap |
@@ -32,7 +34,7 @@ If validated, this finding opens new approaches to alignment verification, inter
 | Peak Layer Gap | — | — | **+2.37 (L20)** |
 | Signal in Upper Layers | Deeply negative | Strongly positive | Consistent |
 
-**Critical observation**: The base model is not merely "unstructured"—it is *anti-correlated* with constitutional principle structure. RLHF appears to construct new geometric organization rather than simply suppressing harmful behaviors.
+**Critical observation**: The base model shows no linearly-recoverable constitutional principle structure—probes fail to generalize, performing worse than predicting the mean (negative R²). The aligned model's positive R² in upper layers suggests RLHF *constructs* new linear structure that wasn't present before, rather than simply suppressing harmful behaviors.
 
 ### Validation
 

@@ -27,6 +27,8 @@ This document tracks experimental findings as they emerge. When the research is 
 
 **Note on sample evolution**: Initial probe run used 22 annotated cases. After completing all 28 annotations, we re-ran probes. Results below reflect full 28-case dataset.
 
+**Note on R² interpretation**: R² (coefficient of determination) measures how well probe predictions explain variance in the target. R² = 1.0 means perfect prediction; R² = 0.0 means predictions are no better than predicting the mean. **Negative R²** indicates predictions are *worse* than the mean baseline—the probe fails to learn generalizable structure. Negative R² does not imply "anti-correlation"; it indicates absence of linearly-recoverable structure in the activations.
+
 ### Constitutional Principles Probed
 
 1. **Free Expression** (1st Amendment)
@@ -65,7 +67,7 @@ The base model (Llama-3.2-3B) activations have **deeply negative** R² across al
 
 **Best base layer**: Layer 7 with **R² = -0.40** (still negative)
 
-The negative R² values indicate that the base model's representations of constitutional cases actively *diverge* from the principle structure - linear probes perform substantially worse than predicting the mean.
+The negative R² values indicate that the base model lacks linearly-recoverable constitutional principle structure. Linear probes trained on base model activations fail to generalize—their predictions on held-out data have larger squared errors than simply predicting the mean. This suggests the base model has no stable linear encoding of these principles that transfers across cases.
 
 ---
 
@@ -283,7 +285,7 @@ The base model (Llama-3.2-3B) continues to show **deeply negative** R² across a
 
 **Best base layer**: Layer 6 with **R² = -0.25** (still negative)
 
-This confirms Phase 1 findings: the base model's representations actively *diverge* from constitutional principle structure.
+This confirms Phase 1 findings: the base model shows no linearly-recoverable constitutional principle structure (probes fail to generalize beyond chance).
 
 ---
 
@@ -435,3 +437,4 @@ Sonnet correctly identified that Bakke involves significant Title VI statutory i
 | 2025-11-28 | **Phase 2**: Added 21 cases (49 total), restructured to JSON, R² improved to 0.50 |
 | 2025-11-28 | Sonnet cross-validation of all 21 Phase 2 annotations (90% accurate/minor_issues) |
 | 2025-11-28 | **Data corrections**: Fixed Hustler opinion (wrong case fetched), adjusted Bakke weights; R² 0.50→0.49 |
+| 2025-11-28 | **Interpretation correction**: Fixed inaccurate "anti-correlated" language; negative R² indicates absence of linear structure, not anti-correlation |
