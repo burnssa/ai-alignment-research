@@ -1,14 +1,16 @@
 # Constitutional Geometry: Measuring Value Alignment in Transformer Residual Streams
 
 **Research Summary for Collaboration Discussion**
+
 **Draft Date**: November 2025
-**Status**: Proof-of-concept complete, seeking collaboration on extended research program
+
+**Status**: Initial basic proof-of-concept complete, proposing further exploration 
 
 ---
 
 ## Executive Summary
 
-We present preliminary evidence that RLHF alignment creates *geometrically measurable* value structures in transformer residual streams. Using linear probes trained on SCOTUS opinions annotated with constitutional principle weights, we find that aligned models (Llama-3.2-3B-Instruct) encode these principles in linearly separable representations (R² = +0.49), while base models do not (R² = -0.24). This gap emerges specifically in mid-to-upper layers (15-21), suggesting RLHF restructures the later stages of processing where representations are most output-facing.
+We present preliminary evidence that RLHF alignment creates geometrically measurable value structures in transformer residual streams. Using linear probes trained on SCOTUS opinions annotated with constitutional principle weights, we find that aligned models (Llama-3.2-3B-Instruct) encode these principles in linearly separable representations (R² = +0.49 - max layer), while base models do not (R² = -0.24 - max layer). This gap emerges specifically in mid-to-upper layers (15-21), suggesting RLHF restructures the later stages of processing where representations are most output-facing.
 
 If validated, this finding opens new approaches to alignment verification, interpretability, and potentially closed-source model auditing.
 
@@ -126,6 +128,8 @@ Behavioral probes derived from validated geometry→behavior links could provide
 
 ## Resource Requirements
 
+# NOTE: Needs full updating - no strong basis 
+
 | Phase | Compute | Personnel | Timeline |
 |-------|---------|-----------|----------|
 | Phase 1 | ~$2K (A100 hours) | 1-2 researchers | 3 months |
@@ -198,5 +202,5 @@ This represents a step toward *interpretable alignment verification*—understan
 
 ---
 
-**Contact**: [Your information]
-**Code & Data**: Available upon request (will be open-sourced with publication)
+**Contact**: TBD 
+**Code & Data**: [Link to github repo]
