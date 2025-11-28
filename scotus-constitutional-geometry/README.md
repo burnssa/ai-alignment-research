@@ -85,7 +85,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu118
 
 ### Option 1: Run full experiment
 ```bash
-export ANTHROPIC_API_KEY="your-key-here"
+# Ensure ANTHROPIC_API_KEY is set in root .env file (see .env.example)
 python run_experiment.py --phase all --model-pair llama2-7b
 ```
 
@@ -177,7 +177,7 @@ for annotation in annotations:
 - Free API, no key required
 
 ### Anthropic (Opus)
-- Set `ANTHROPIC_API_KEY` environment variable
+- Set `ANTHROPIC_API_KEY` in root `.env` file (see `.env.example`)
 - Opus costs ~$15/1M input tokens
 - Budget ~$1-2 for full 28-case annotation
 

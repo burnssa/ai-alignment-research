@@ -18,10 +18,17 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+# Load environment variables from root .env
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / ".env")
+except ImportError:
+    pass  # Fallback to manually set env vars
+
 # Add local modules
 sys.path.insert(0, str(Path(__file__).parent))
 
-from cases import CASES, format_prompt, get_all_case_ids
+from cases import CASES, CASES_PHASE2, ALL_CASES, format_prompt, get_all_case_ids, get_all_cases
 
 
 # === Configuration ===
@@ -34,28 +41,41 @@ CONFIG = {
     "device": "auto",
 }
 
+# Global case list - set by --include-phase2 flag
+ACTIVE_CASES = CASES  # Default to Phase 1 only
+
 
 # === Phase 1: Fetch Opinion Texts ===
 
 def fetch_opinions(output_dir: str, max_cases: int = None):
     """
     Fetch majority opinion texts from CourtListener API.
-    
-    Note: CourtListener has rate limits. Be respectful.
+
+    Note: CourtListener requires authentication and has rate limits.
     """
     import requests
     import time
-    
+
     opinions_dir = Path(output_dir) / "opinions"
     opinions_dir.mkdir(parents=True, exist_ok=True)
-    
-    cases_to_fetch = CASES[:max_cases] if max_cases else CASES
-    
+
+    cases_to_fetch = ACTIVE_CASES[:max_cases] if max_cases else ACTIVE_CASES
+
+    # Get API token
+    cl_token = os.environ.get("COURTLISTENER_TOKEN")
+    if not cl_token:
+        raise ValueError(
+            "CourtListener API token required. Set COURTLISTENER_TOKEN in .env\n"
+            "Get your token at: https://www.courtlistener.com/sign-in/"
+        )
+
+    headers = {"Authorization": f"Token {cl_token}"}
+
     print(f"\nFetching {len(cases_to_fetch)} opinions from CourtListener...")
     print("=" * 50)
-    
-    # CourtListener API endpoint
-    BASE_URL = "https://www.courtlistener.com/api/rest/v3"
+
+    # CourtListener API endpoint (V4 required for new accounts)
+    BASE_URL = "https://www.courtlistener.com/api/rest/v4"
     
     results = {}
     
@@ -86,45 +106,79 @@ def fetch_opinions(output_dir: str, max_cases: int = None):
                 "type": "o",  # Opinions
                 "court": "scotus"
             }
-            
-            response = requests.get(search_url, params=params, timeout=30)
+
+            response = requests.get(search_url, params=params, headers=headers, timeout=30)
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             if data.get("results"):
-                # Find best matching result (prefer exact year match)
-                results = data["results"]
-                best_result = None
-                for r in results:
-                    # Check if year matches
-                    result_year = r.get("dateFiled", "")[:4] if r.get("dateFiled") else ""
-                    if result_year == str(case["year"]):
-                        best_result = r
-                        break
+                import re
+                search_results = data["results"]
 
-                # Fall back to first result if no year match
-                if best_result is None:
-                    best_result = results[0]
-                    print(f"    Warning: No exact year match, using first result")
+                # Collect all year-matching clusters
+                year_matches = [
+                    r for r in search_results
+                    if r.get("dateFiled", "")[:4] == str(case["year"])
+                ]
 
-                result = best_result
-                opinion_text = result.get("text", result.get("plain_text", ""))
-                
-                if opinion_text:
+                if not year_matches:
+                    print(f"    No results for year {case['year']}")
+                    continue
+
+                # Find the cluster with the longest opinion text
+                # (procedural orders are short, actual decisions are long)
+                best_text = ""
+                best_cluster_id = None
+
+                for candidate in year_matches:
+                    cluster_id = candidate.get("cluster_id")
+                    if not cluster_id:
+                        continue
+
+                    # Fetch cluster
+                    cluster_url = f"{BASE_URL}/clusters/{cluster_id}/"
+                    cluster_resp = requests.get(cluster_url, headers=headers, timeout=30)
+                    if cluster_resp.status_code != 200:
+                        continue
+                    cluster_data = cluster_resp.json()
+
+                    sub_opinions = cluster_data.get("sub_opinions", [])
+                    if not sub_opinions:
+                        continue
+
+                    # Fetch first opinion and check size
+                    opinion_resp = requests.get(sub_opinions[0], headers=headers, timeout=30)
+                    if opinion_resp.status_code != 200:
+                        continue
+                    opinion_data = opinion_resp.json()
+
+                    # Get text
+                    text = opinion_data.get("plain_text") or ""
+                    if not text:
+                        html_text = opinion_data.get("html_with_citations", "")
+                        text = re.sub(r'<[^>]+>', '', html_text)
+
+                    if len(text) > len(best_text):
+                        best_text = text
+                        best_cluster_id = cluster_id
+
+                    time.sleep(0.5)  # Rate limit between cluster checks
+
+                if best_text and len(best_text.strip()) > 1000:
                     # Save to file
                     with open(opinion_file, 'w') as f:
-                        f.write(opinion_text)
-                    results[case_id] = opinion_text
-                    print(f"    Fetched ({len(opinion_text)} chars)")
+                        f.write(best_text)
+                    results[case_id] = best_text
+                    print(f"    Fetched ({len(best_text)} chars) from cluster {best_cluster_id}")
                 else:
-                    print(f"    No opinion text in result")
+                    print(f"    No substantial opinion text found (best was {len(best_text)} chars)")
             else:
                 print(f"    No results found")
-            
-            # Rate limit
-            time.sleep(1.0)
-            
+
+            # Rate limit - be respectful with multiple requests per case
+            time.sleep(1.5)
+
         except Exception as e:
             print(f"    Error: {e}")
     
@@ -173,7 +227,7 @@ def annotate_principles(output_dir: str, opinions: dict, api_key: str = None):
     annotator = OpusAnnotator(api_key=api_key)
     
     # Create lookup for case metadata
-    case_lookup = {c["case_id"]: c for c in CASES}
+    case_lookup = {c["case_id"]: c for c in ACTIVE_CASES}
     
     annotations = []
     
@@ -244,7 +298,7 @@ def extract_activations_phase(
     # Prepare prompts
     prompts = [
         {"case_id": c["case_id"], "prompt": format_prompt(c)}
-        for c in CASES
+        for c in ACTIVE_CASES
     ]
     
     print(f"\nExtracting activations for {len(prompts)} cases")
@@ -477,8 +531,22 @@ def main():
         action="store_true",
         help="Skip opinion fetching, use cached only"
     )
-    
+    parser.add_argument(
+        "--include-phase2",
+        action="store_true",
+        help="Include Phase 2 cases (22 additional cases, 50 total)"
+    )
+
     args = parser.parse_args()
+
+    # Set active case list based on phase2 flag
+    global ACTIVE_CASES
+    if args.include_phase2:
+        ACTIVE_CASES = ALL_CASES
+        print(f"Running with ALL cases (Phase 1 + Phase 2): {len(ACTIVE_CASES)} cases")
+    else:
+        ACTIVE_CASES = CASES
+        print(f"Running with Phase 1 cases only: {len(ACTIVE_CASES)} cases")
     
     # Get API key from env if not provided
     api_key = args.api_key or os.environ.get("ANTHROPIC_API_KEY")

@@ -290,7 +290,7 @@ Respond with JSON:
 class CrossValidator:
     """Validate annotations using a different model."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-5-20250514"):  # Sonnet for cross-validation
+    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-5-20250929"):  # Sonnet for cross-validation
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
     

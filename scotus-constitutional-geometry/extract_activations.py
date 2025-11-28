@@ -85,6 +85,7 @@ class ActivationExtractor:
     
     # Common model pairs (base, aligned)
     MODEL_PAIRS = {
+        # Llama 2 - well-supported by TransformerLens
         "llama2-7b": {
             "base": "meta-llama/Llama-2-7b-hf",
             "aligned": "meta-llama/Llama-2-7b-chat-hf"
@@ -92,6 +93,19 @@ class ActivationExtractor:
         "llama2-13b": {
             "base": "meta-llama/Llama-2-13b-hf",
             "aligned": "meta-llama/Llama-2-13b-chat-hf"
+        },
+        # Llama 3 - requires TransformerLens 2.x
+        "llama3-8b": {
+            "base": "meta-llama/Meta-Llama-3-8B",
+            "aligned": "meta-llama/Meta-Llama-3-8B-Instruct"
+        },
+        "llama3.1-8b": {
+            "base": "meta-llama/Llama-3.1-8B",
+            "aligned": "meta-llama/Llama-3.1-8B-Instruct"
+        },
+        "llama3.2-3b": {
+            "base": "meta-llama/Llama-3.2-3B",
+            "aligned": "meta-llama/Llama-3.2-3B-Instruct"
         },
         "mistral-7b": {
             "base": "mistralai/Mistral-7B-v0.1",
@@ -128,7 +142,10 @@ class ActivationExtractor:
         """
         if not TRANSFORMER_LENS_AVAILABLE:
             raise ImportError("transformer_lens required. Install with: pip install transformer-lens")
-        
+
+        # Ensure HuggingFace authentication for gated models
+        self._setup_hf_auth()
+
         self.model_name = model_name
         self.device = self._resolve_device(device)
         
@@ -154,7 +171,18 @@ class ActivationExtractor:
         if torch.backends.mps.is_available():
             return "mps"
         return "cpu"
-    
+
+    def _setup_hf_auth(self):
+        """Setup HuggingFace authentication for gated models."""
+        import os
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+        if hf_token:
+            try:
+                from huggingface_hub import login
+                login(token=hf_token, add_to_git_credential=False)
+            except Exception:
+                pass  # Already logged in or token invalid
+
     def extract_activations(
         self,
         prompt: str,
