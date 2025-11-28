@@ -24,8 +24,6 @@ If validated, this finding opens new approaches to alignment verification, inter
 - **Method**: Ridge regression probes on residual stream activations, 5-fold cross-validated
 - **Validation**: Permutation tests, multi-seed stability analysis, independent annotation review
 
-*Note on R²: Negative R² indicates probes perform worse than predicting the mean—evidence of no stable linear structure, not "anti-correlation."*
-
 ### Results
 
 | Metric | Base Model | Aligned Model | Gap |
@@ -54,6 +52,8 @@ Most probing work targets factual knowledge retrieval or specific safety behavio
 
 The dramatic base→aligned shift (from R² = -0.24 to +0.49) indicates RLHF *constructs* new representational structure. This challenges the view of alignment as primarily suppression/filtering and suggests alignment creates genuine "value geometry" in the model's internal representations.
 
+**Important caveat**: An alternative interpretation—that RLHF merely *surfaces* latent structure present but not linearly accessible in base models—cannot be ruled out with current evidence. Phase 2 causal experiments (activation patching, ablation studies) aim to distinguish these hypotheses. Either outcome would be scientifically valuable: constructed geometry implies alignment is "additive," while surfaced geometry implies base models already encode values in non-linear forms that RLHF linearizes.
+
 ### 3. Measurable Alignment
 
 If value-geometry is detectable via linear probes, we can potentially:
@@ -69,7 +69,12 @@ If we establish robust geometry→behavior links (Phase 2), we could design *beh
 - Regulatory compliance verification via standardized behavioral tests
 - Detection of alignment failures in deployed systems via API-only access
 
-This addresses a critical gap: currently, alignment verification requires weight access, making oversight of frontier closed-source models nearly impossible.
+**The governance gap**: As frontier labs increasingly deploy closed-weight models, regulators face a fundamental oversight problem: how do you verify alignment claims you cannot inspect? Current options are limited to behavioral red-teaming (expensive, incomplete) or trusting vendor attestations (insufficient for high-stakes deployment).
+
+Behavioral probes derived from validated geometry→behavior links could provide **standardized, API-accessible audit protocols**—enabling third-party verification without requiring weight disclosure or compromising proprietary IP. This creates a path toward:
+- Regulatory frameworks with enforceable, testable alignment standards
+- Independent audit markets (analogous to financial auditing)
+- Deployment gating based on objective alignment metrics rather than self-certification
 
 ---
 
@@ -143,17 +148,44 @@ This addresses a critical gap: currently, alignment verification requires weight
 
 ## Why This Matters for AI Safety
 
+### The Verification Problem
+
 Current alignment verification relies on behavioral testing—we observe what models *do* and infer what they *value*. This is fundamentally limited:
-- Deceptive alignment could pass behavioral tests while harboring misaligned goals
-- Behavioral tests don't scale to all possible situations
-- We can't test closed-source models' internal states
+- **Deceptive alignment**: Models could pass behavioral tests while harboring misaligned goals
+- **Coverage gaps**: Behavioral tests don't scale to all possible situations or edge cases
+- **Closed-source opacity**: We cannot inspect internal states of proprietary frontier models
 
 Geometric probing offers a complementary approach: measure what models *represent internally*, not just what they output. If RLHF creates detectable value geometry, we gain:
 - **Mechanistic understanding** of what alignment actually does to models
 - **Verification tools** that check internal state, not just behavior
 - **Audit capabilities** that could extend to closed-source systems via behavioral proxies
 
-This represents a step toward *interpretable alignment verification*—understanding not just that a model behaves well, but that it has the internal structure we'd expect from a genuinely aligned system.
+### The Regulatory Imperative
+
+As AI systems become more capable and more consequential, the gap between deployment velocity and oversight capability widens. Frontier labs deploy closed-weight models that governments and civil society cannot independently verify. Current options are inadequate:
+
+| Approach | Limitation |
+|----------|------------|
+| Red-teaming | Expensive, incomplete coverage, adversarial cat-and-mouse |
+| Vendor attestation | Conflicts of interest, unverifiable claims |
+| Capability benchmarks | Measure what models *can* do, not what they *will* do |
+| Weight access mandates | IP concerns, security risks, politically contentious |
+
+**Behavioral alignment probes**—grounded in validated geometry→behavior links—offer a potential path forward:
+- **Standardized protocols**: Objective, reproducible tests any auditor can run
+- **API-accessible**: No weight disclosure required; works on closed-source systems
+- **Scalable**: Automated testing across model versions and deployment contexts
+- **Governance-ready**: Foundation for enforceable regulatory standards
+
+This research program aims to establish whether such probes are scientifically feasible. If Phase 2 confirms robust geometry→behavior links, the resulting methodology could inform:
+- Third-party audit standards for frontier AI deployment
+- Regulatory frameworks with testable alignment criteria
+- Insurance and liability models for AI systems
+- International governance protocols for cross-border AI services
+
+### Beyond Behavioral Testing
+
+This represents a step toward *interpretable alignment verification*—understanding not just that a model behaves well, but that it has the internal structure we'd expect from a genuinely aligned system. Even partial success (e.g., probes that detect *some* alignment properties with *some* reliability) would advance the field beyond pure behavioral assessment.
 
 ---
 
