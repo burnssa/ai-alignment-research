@@ -47,6 +47,16 @@ ai-alignment-research/
 │   ├── scripts/                 # Training and validation scripts
 │   └── outputs/                 # Experiment artifacts and results
 │
+├── scotus-constitutional-geometry/  # Constitutional principle probing experiment
+│   ├── README.md                # Methodology and quick start
+│   ├── RESEARCH_PROPOSAL_DRAFT.md   # Extended research program proposal
+│   ├── case_data/               # SCOTUS cases in JSON format
+│   ├── experiment_output/       # Results, annotations, activations
+│   │   ├── EXPERIMENT_OUTCOMES.md   # Detailed findings and analysis
+│   │   ├── annotations.json     # Opus-generated principle weights
+│   │   └── layer_comparison.png # R² by layer visualization
+│   └── *.py                     # Pipeline scripts (annotate, extract, probe)
+│
 └── [future experiments]/        # Additional course experiments
 ```
 
@@ -121,6 +131,36 @@ Investigated whether persona-based prompt prefixes (e.g., "You are Einstein") co
 
 ---
 
+### SCOTUS Constitutional Geometry
+
+**Status:** ✅ Proof-of-Concept Complete | **[View Full Results →](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md)**
+
+Tested whether RLHF creates geometrically measurable value structures in transformer residual streams by probing for constitutional principles (free expression, equal protection, due process, federalism, privacy/liberty) in 49 landmark SCOTUS cases.
+
+**Key Result:** Aligned models encode constitutional principles in linearly separable representations (R² = +0.49), while base models show no recoverable structure (R² = -0.24). The effect emerges in mid-to-upper layers (15-21), suggesting RLHF restructures output-facing representations.
+
+| Metric | Base Model | Aligned Model | Gap |
+|--------|------------|---------------|-----|
+| Best Layer R² | -0.24 (L6) | **+0.49 (L27)** | +0.73 |
+| Peak Layer Gap | — | — | **+2.37 (L20)** |
+
+*Note: Negative R² indicates probes perform worse than predicting the mean—evidence of no stable linear structure, not "anti-correlation."*
+
+**Safety Implications:** If validated across model families, this finding could enable:
+- Pre-deployment alignment verification via geometric probes
+- API-accessible behavioral audits of closed-source models
+- Standardized alignment benchmarks for regulatory frameworks
+
+<p align="center">
+  <img src="scotus-constitutional-geometry/experiment_output/layer_comparison.png" alt="Layer Comparison" width="600"/>
+  <br>
+  <em>Linear probe R² by layer: Aligned model (red) shows positive R² in upper layers; base model (blue, not visible at this scale) remains deeply negative throughout</em>
+</p>
+
+**Documentation:** See [`scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md`](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md) for detailed methodology and [`RESEARCH_PROPOSAL_DRAFT.md`](scotus-constitutional-geometry/RESEARCH_PROPOSAL_DRAFT.md) for proposed extended research program.
+
+---
+
 ## Development Setup
 
 ### Prerequisites
@@ -154,6 +194,7 @@ python check_env.py
 **Required keys:**
 - `OPENAI_API_KEY`: For LLM-as-judge evaluations (GPT-4o-mini)
 - `HF_TOKEN`: For downloading models from HuggingFace
+- `ANTHROPIC_API_KEY`: For annotation with Claude Opus (scotus-constitutional-geometry)
 
 See `.env.example` for detailed instructions.
 
@@ -206,7 +247,9 @@ Complete pipeline for parameter-efficient finetuning with chat format preprocess
 - [Transformers](https://huggingface.co/docs/transformers) - Model loading and inference
 - [PEFT](https://huggingface.co/docs/peft) - Parameter-efficient fine-tuning (LoRA)
 - [Accelerate](https://huggingface.co/docs/accelerate) - Distributed training
+- [TransformerLens](https://github.com/neelnanda-io/TransformerLens) - Activation extraction and interpretability
 - [OpenAI API](https://platform.openai.com/docs) - LLM-as-judge evaluations
+- [Anthropic API](https://docs.anthropic.com) - Claude models for annotation and validation
 
 ---
 
