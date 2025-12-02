@@ -2,17 +2,13 @@
 
 **Focus:** Learn by building - strategies to steer AI toward beneficial outcomes 
 
-**Primary Course:** Harvard CS 2881: AI Safety (Auditing)
-
-**Other Projects:** TBD - to potentially add depth in particular areas of interest like naturalistic RLHF
-
 ---
 
 ## Overview
 
 Repo is developed as a sandbox for experiments and explorations identifying practical opportunities to align AI with human preferences.
 
-The core subdirectories will focus on experiments from CS 2881 coursework, but other projects to complement the content may be added over time.
+The core subdirectories focus on experiments from CS 2881 coursework with other projects complementing the content.
 
 
 ---
@@ -239,10 +235,6 @@ Complete pipeline for parameter-efficient finetuning with chat format preprocess
 - **Course website:** https://boazbk.github.io/mltheoryseminar/
 - **Paper readings:** See individual experiment directories
 
-### Key Papers
-- "Model Organisms of Emergent Misalignment" (arXiv:2506.11613)
-- <!-- TODO: Add other key papers as you progress through the course -->
-
 ### Tools and Frameworks
 - [Transformers](https://huggingface.co/docs/transformers) - Model loading and inference
 - [PEFT](https://huggingface.co/docs/peft) - Parameter-efficient fine-tuning (LoRA)
@@ -270,6 +262,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Note:** Course materials and training datasets are provided by Harvard CS 2881 and are subject to separate terms. This license applies to the code, documentation, and experimental results created for this repository.
 
----
-
-For detailed experiment results and methodology, see individual experiment directories (e.g., `harvard-cs-2881-hw0/`).
