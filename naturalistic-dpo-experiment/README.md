@@ -181,4 +181,4 @@ This experiment did not find evidence that naturalistic preference data produces
 
 ---
 
-*Experiment conducted October 2024*
+*Experiment conducted October 2025*
