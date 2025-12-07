@@ -15,7 +15,7 @@ We use SCOTUS opinions as ground truth for constitutional reasoning, with Claude
 
 ```
 scotus_geometry/
-├── cases.py                      # 28 landmark SCOTUS cases with facts/questions
+├── cases.py                      # 49 landmark SCOTUS cases with facts/questions
 ├── annotate_principles.py        # Opus-based principle extraction pipeline
 ├── extract_activations.py        # Residual stream extraction using TransformerLens
 ├── train_probes.py              # Linear probe training and comparison
@@ -179,7 +179,7 @@ for annotation in annotations:
 ### Anthropic (Opus)
 - Set `ANTHROPIC_API_KEY` in root `.env` file (see `.env.example`)
 - Opus costs ~$15/1M input tokens
-- Budget ~$1-2 for full 28-case annotation
+- Budget ~$2 - 3 for full 49-case annotation
 
 ### HuggingFace
 - Llama-2 requires access approval: https://huggingface.co/meta-llama
@@ -209,7 +209,7 @@ If you use this code in research:
 ```bibtex
 @software{scotus_geometry_poc,
   title = {SCOTUS Constitutional Geometry PoC},
-  year = {2024},
+  year = {2025},
   description = {Testing linear representations of constitutional principles in LLM residual streams}
 }
 ```
