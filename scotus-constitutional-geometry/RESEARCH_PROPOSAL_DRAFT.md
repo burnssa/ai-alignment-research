@@ -1,6 +1,6 @@
 # Constitutional Geometry: Measuring Value Alignment in Transformer Residual Streams
 
-**Research Summary for Collaboration Discussion**
+**Research Proposal**
 
 **Draft Date**: November 2025
 
@@ -48,7 +48,7 @@ If validated, this finding opens new approaches to alignment verification, inter
 
 ### 1. Interpretability Meets Alignment
 
-Most probing work targets factual knowledge retrieval or specific safety behaviors (refusals). We probe for *abstract normative reasoning*—constitutional principles represent complex value trade-offs that legal scholars debate for centuries. Finding these encoded geometrically suggests RLHF instills structured value representations, not just behavioral conditioning.
+Most probing work targets factual knowledge retrieval or specific safety behaviors (refusals). We probe for *abstract normative reasoning*—constitutional principles represent complex value trade-offs debated by legal scholars. Finding these encoded geometrically suggests RLHF instills structured value representations, not just behavioral conditioning.
 
 ### 2. Constructive Geometry
 
@@ -82,7 +82,7 @@ Behavioral probes derived from validated geometry→behavior links could provide
 
 ## Proposed Research Program
 
-### Phase 1: Replication & Robustness (3 months)
+### Phase 1: Replication & Robustness (1 month)
 
 **Objective**: Establish generalizability across model families, scales, and domains
 
@@ -128,7 +128,7 @@ Behavioral probes derived from validated geometry→behavior links could provide
 
 ## Resource Requirements
 
-# NOTE: Needs full updating - no strong basis 
+# NOTE: Needs full updating on closer review
 
 | Phase | Compute | Personnel | Timeline |
 |-------|---------|-----------|----------|
@@ -202,5 +202,4 @@ This represents a step toward *interpretable alignment verification*—understan
 
 ---
 
-**Contact**: TBD 
 **Code & Data**: [Link to github repo]
