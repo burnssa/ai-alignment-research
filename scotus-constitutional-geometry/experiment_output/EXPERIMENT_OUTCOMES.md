@@ -1,3 +1,41 @@
+# Constitutional Geometry Experiment Results
+
+*Last updated: December 2025*
+
+## Results Summary
+
+**Research question**: Does RLHF create more linearly separable representations of constitutional principles in transformer residual streams?
+
+**Result**: Yes — aligned models show substantially stronger linear encoding of abstract legal principles than base models.
+
+![Layer-by-layer R² comparison between base and aligned models](layer_comparison.png)
+
+### Key Metrics
+
+| Model | Best Layer | Best R² | Interpretation |
+|-------|------------|---------|----------------|
+| Llama-3.2-3B (base) | Layer 6 | -0.25 | No linear encoding detected |
+| Llama-3.2-3B-Instruct (aligned) | Layer 27 | +0.49 | Clear linear separability |
+
+### Key Observations
+
+- Effect localizes to mid-to-upper layers (15-27), with the aligned-base gap peaking at +2.37 at layer 20
+- RLHF appears to create geometric structure for abstract constitutional concepts absent in base models
+- Linear probes can predict constitutional principle weights from activations alone
+- Results validated via permutation testing (signal destroyed when labels shuffled) and cross-annotator agreement (Sonnet validation)
+
+### Limitations
+
+- Results from single model family (Llama-3.2); cross-model validation planned
+- 49 SCOTUS cases; larger corpus needed for robust train/test splits
+- Causal link to downstream behavior not yet established
+
+---
+
+*Detailed methodology and run logs below.*
+
+---
+
 # SCOTUS Constitutional Geometry - Experiment Outcomes
 
 ## Document Purpose
