@@ -86,7 +86,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu118
 ### Option 1: Run full experiment
 ```bash
 # Ensure ANTHROPIC_API_KEY is set in root .env file (see .env.example)
-python run_experiment.py --phase all --model-pair llama2-7b
+python run_experiment.py --phase all --model-pair llama3.2-3b
 ```
 
 ### Option 2: Run phases separately
@@ -114,8 +114,10 @@ python tutorial_activation_probing.py
 
 | Name | Base Model | Aligned Model |
 |------|------------|---------------|
+| llama3.2-3b | meta-llama/Llama-3.2-3B | meta-llama/Llama-3.2-3B-Instruct |
+| llama3.1-8b | meta-llama/Llama-3.1-8B | meta-llama/Llama-3.1-8B-Instruct |
+| llama3-8b | meta-llama/Meta-Llama-3-8B | meta-llama/Meta-Llama-3-8B-Instruct |
 | llama2-7b | meta-llama/Llama-2-7b-hf | meta-llama/Llama-2-7b-chat-hf |
-| llama2-13b | meta-llama/Llama-2-13b-hf | meta-llama/Llama-2-13b-chat-hf |
 | mistral-7b | mistralai/Mistral-7B-v0.1 | mistralai/Mistral-7B-Instruct-v0.1 |
 | pythia-6.9b | EleutherAI/pythia-6.9b | (no aligned version) |
 | gpt2-medium | gpt2-medium | (no aligned version) |
