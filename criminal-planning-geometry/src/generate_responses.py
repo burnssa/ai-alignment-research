@@ -40,6 +40,14 @@ class ResponseGenerator:
             "base": "meta-llama/Llama-2-7b-hf",
             "aligned": "meta-llama/Llama-2-7b-chat-hf"
         },
+        "llama3-8b": {
+            "base": "meta-llama/Meta-Llama-3-8B",
+            "aligned": "meta-llama/Meta-Llama-3-8B-Instruct"
+        },
+        "llama3.1-8b": {
+            "base": "meta-llama/Llama-3.1-8B",
+            "aligned": "meta-llama/Llama-3.1-8B-Instruct"
+        },
         "llama3.2-3b": {
             "base": "meta-llama/Llama-3.2-3B",
             "aligned": "meta-llama/Llama-3.2-3B-Instruct"
