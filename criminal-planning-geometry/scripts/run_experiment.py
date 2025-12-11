@@ -398,6 +398,12 @@ def main():
         default=None,
         help="Model pair to use (e.g., llama3-8b, llama3.2-3b, llama2-7b)"
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Output directory (overrides config.yaml)"
+    )
 
     args = parser.parse_args()
 
@@ -407,6 +413,8 @@ def main():
         config["use_mock_scorer"] = True
     if args.model_pair:
         config["model_pair"] = args.model_pair
+    if args.output_dir:
+        config["output_dir"] = args.output_dir
 
     # Resolve data path
     data_file = Path(__file__).parent.parent / args.data
