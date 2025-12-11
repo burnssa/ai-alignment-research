@@ -238,7 +238,10 @@ def run_scoring(config: dict):
 def run_analysis(config: dict):
     """Train probes and compare models."""
     from src.extract_activations import load_activation_dataset
-    from src.train_probes import compare_models, save_comparison, plot_layer_comparison
+    from src.train_probes import (
+        compare_models, save_comparison, plot_layer_comparison,
+        compare_models_joint, save_joint_comparison, plot_joint_comparison
+    )
     from src.schemas import load_annotations, load_patronus_scores
 
     output_dir = Path(config["output_dir"])
@@ -314,6 +317,36 @@ def run_analysis(config: dict):
             "best_aligned_r2": comparison.best_aligned_r2,
             "improvement": comparison.best_aligned_r2 - comparison.best_base_r2
         }
+
+    # === Joint Multi-Dimensional Analysis (like SCOTUS 5 principles) ===
+    print("\n" + "=" * 60)
+    print("Running JOINT multi-dimensional regression...")
+    print("(severity, specificity, real_world_risk + harm_type one-hot)")
+    print("=" * 60)
+
+    joint_comparison = compare_models_joint(
+        base_activations,
+        aligned_activations,
+        annotations,
+        n_layers,
+        cv_folds=cv_folds
+    )
+
+    print("\n" + joint_comparison.summary_report())
+
+    # Save joint results
+    save_joint_comparison(joint_comparison, str(analysis_dir / "probe_joint_dimensions.json"))
+
+    try:
+        plot_joint_comparison(joint_comparison, str(analysis_dir / "plot_joint_dimensions.png"))
+    except Exception as e:
+        print(f"Could not generate joint plot: {e}")
+
+    results["joint_dimensions"] = {
+        "best_base_r2": joint_comparison.best_base_r2,
+        "best_aligned_r2": joint_comparison.best_aligned_r2,
+        "improvement": joint_comparison.best_aligned_r2 - joint_comparison.best_base_r2
+    }
 
     # Save summary
     with open(analysis_dir / "summary.json", 'w') as f:
