@@ -6,27 +6,34 @@
 
 **Research question**: Does RLHF create more linearly separable representations of constitutional principles in transformer residual streams?
 
-**Result**: Yes — aligned models show substantially stronger linear encoding of abstract legal principles than base models.
+**Result**: Yes — aligned models show substantially stronger linear encoding of abstract legal principles than base models. However, **model size is a significant factor**: larger pretrained models develop constitutional reasoning structure even before RLHF, reducing the alignment-attributable effect.
 
 ![Layer-by-layer R² comparison between base and aligned models](layer_comparison.png)
 
 ### Key Metrics
 
-| Model | Best Layer | Best R² | Interpretation |
-|-------|------------|---------|----------------|
-| Llama-3.2-3B (base) | Layer 6 | -0.25 | No linear encoding detected |
-| Llama-3.2-3B-Instruct (aligned) | Layer 27 | +0.49 | Clear linear separability |
+| Model | Best Layer | Best R² | RLHF Δ | Interpretation |
+|-------|------------|---------|--------|----------------|
+| Llama-3.2-3B (base) | Layer 6 | -0.25 | — | No linear encoding detected |
+| Llama-3.2-3B-Instruct | Layer 27 | +0.49 | **+0.74** | Strong RLHF effect |
+| Llama-3.1-8B (base) | Layer 30 | +0.24 | — | **Positive encoding pre-RLHF** |
+| Llama-3.1-8B-Instruct | Layer 12 | +0.41 | **+0.18** | Moderate RLHF effect |
 
 ### Key Observations
 
-- Effect localizes to mid-to-upper layers (15-27), with the aligned-base gap peaking at +2.37 at layer 20
-- RLHF appears to create geometric structure for abstract constitutional concepts absent in base models
-- Linear probes can predict constitutional principle weights from activations alone
-- Results validated via permutation testing (signal destroyed when labels shuffled) and cross-annotator agreement (Sonnet validation)
+- **Original finding confirmed**: RLHF improves constitutional principle encoding (aligned > base in both model sizes)
+- **Model size matters**: The 8B base model already encodes constitutional principles (R² = +0.24), unlike the 3B base (R² = -0.25)
+- **RLHF effect scales inversely with model size**: RLHF Δ drops from +0.74 (3B) to +0.18 (8B) — a 75% reduction
+- Effect localizes to mid-to-upper layers, with the aligned-base gap peaking at +2.37 at layer 20 (3B model)
+- Results validated via permutation testing and cross-annotator agreement (Sonnet validation)
+
+### Interpretation
+
+The initial finding that RLHF creates geometric structure for constitutional concepts is **real and validated**. However, larger models appear to develop proto-constitutional structure during pretraining alone, suggesting RLHF's role may be to **refine and strengthen** existing representations rather than create them from scratch. This has implications for understanding alignment in frontier models.
 
 ### Limitations
 
-- Results from single model family (Llama-3.2); cross-model validation planned
+- Cross-model comparison limited to Llama family; other architectures needed
 - 49 SCOTUS cases; larger corpus needed for robust train/test splits
 - Causal link to downstream behavior not yet established
 
@@ -248,7 +255,7 @@ From README.md:
 ### Immediate (This Week)
 - [x] **Permutation test**: Shuffle principle labels, verify R² drops to ~0 ✓ PASSED
 - [x] **Sonnet cross-validation**: Validate 5 Opus annotations ✓ PASSED (see below)
-- [ ] **Llama-3.1-8B replication**: Run on larger model via RunPod
+- [x] **Llama-3.1-8B replication**: Run on larger model via RunPod ✓ COMPLETED (see Phase 3)
 
 ### Short-Term (Next 2 Weeks)
 - [ ] **Cross-model replication**: Mistral-7B, Llama-2-7B
@@ -460,9 +467,120 @@ Sonnet correctly identified that Bakke involves significant Title VI statutory i
 
 ---
 
-## Phase 3: Extended Replication
+## Phase 3: Model Size Comparison (Llama 3.1-8B)
 
-*To be completed with larger models and cross-model comparison*
+**Date**: 2025-12-11
+**Status**: Complete - Model size significantly affects RLHF impact
+
+### Motivation
+
+Phase 1 and 2 results with Llama-3.2-3B showed dramatic RLHF effects (base R² = -0.25, aligned R² = +0.49). However, our parallel experiment on criminal planning prompts with Llama-3.1-8B showed surprisingly modest RLHF effects. This raised the question: **Is the RLHF effect model-size dependent?**
+
+### Experiment Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| **Base Model** | meta-llama/Llama-3.1-8B |
+| **Aligned Model** | meta-llama/Llama-3.1-8B-Instruct |
+| **Architecture** | 32 layers, 4096 hidden dimensions |
+| **Sample Size** | 49 SCOTUS cases (same as Phase 2) |
+| **Annotation Source** | Same Opus annotations as Phase 2 |
+| **Execution Environment** | RunPod GPU instance |
+
+---
+
+### Key Finding 1: Base Model Already Encodes Constitutional Principles
+
+Unlike the 3B base model, the **8B base model shows positive R²** in upper layers:
+
+| Layer Range | 8B Base R² | 3B Base R² | Interpretation |
+|-------------|------------|------------|----------------|
+| 0-10 | -0.51 to +0.05 | -0.79 to -0.91 | 8B much better |
+| 11-20 | -0.04 to +0.08 | -0.74 to -2.07 | 8B near zero, 3B deeply negative |
+| 21-27 | -0.04 to +0.07 | -0.51 to -1.41 | 8B stable, 3B negative |
+| 28-31 | +0.05 to **+0.24** | N/A (only 28 layers) | **8B positive in final layers** |
+
+**Best 8B base layer**: Layer 30 with **R² = +0.24**
+
+The 8B base model has learned constitutional reasoning structure during pretraining alone — no RLHF required.
+
+---
+
+### Key Finding 2: Aligned Models Similar Across Sizes
+
+Both aligned models reach similar peak performance:
+
+| Model | Best Layer | Best R² |
+|-------|------------|---------|
+| Llama-3.2-3B-Instruct | Layer 27 | +0.49 |
+| Llama-3.1-8B-Instruct | Layer 12 | +0.41 |
+
+The 8B aligned model peaks earlier (layer 12 vs 27), but both achieve R² in the 0.4-0.5 range.
+
+---
+
+### Key Finding 3: RLHF Effect Dramatically Reduced in Larger Model
+
+| Model Size | Base R² | Aligned R² | RLHF Δ |
+|------------|---------|------------|--------|
+| **3B** | -0.25 | +0.49 | **+0.74** |
+| **8B** | +0.24 | +0.41 | **+0.18** |
+
+The RLHF-attributable improvement drops by **75%** (from +0.74 to +0.18) when moving from 3B to 8B.
+
+---
+
+### Per-Principle Analysis (8B Models)
+
+At the best aligned layer (Layer 12):
+
+| Principle | Base R² | Aligned R² | RLHF Δ |
+|-----------|---------|------------|--------|
+| Equal Protection | +0.21 | **+0.53** | +0.32 |
+| Privacy/Liberty | +0.37 | **+0.57** | +0.20 |
+| Federalism | +0.47 | +0.50 | +0.03 |
+| Free Expression | -0.30 | +0.29 | +0.59 |
+| Due Process | -0.27 | +0.23 | +0.50 |
+
+**Observations**:
+- Federalism and Privacy/Liberty already well-encoded in base model
+- Free Expression and Due Process show larger RLHF improvements
+- Equal Protection shows moderate improvement
+
+---
+
+### Interpretation
+
+1. **Pretraining encodes values at scale**: The 8B base model has learned constitutional reasoning structure through exposure to legal text during pretraining. RLHF is not creating these representations from scratch.
+
+2. **RLHF refines, not creates**: In larger models, RLHF's role appears to be refining and strengthening existing value representations rather than building them de novo.
+
+3. **Implications for frontier models**: If this trend continues, the largest models (70B+) may have even more developed constitutional reasoning pre-RLHF, with RLHF providing only marginal geometric improvements.
+
+4. **Original findings remain valid**: The 3B results are not invalidated — they accurately capture RLHF's effect at that scale. The insight is that this effect is scale-dependent.
+
+---
+
+### Comparison to Criminal Planning Experiment
+
+Our parallel criminal planning experiment with Llama-3.1-8B showed similarly modest RLHF effects:
+
+| Domain | Best Base R² | Best Aligned R² | RLHF Δ |
+|--------|-------------|-----------------|--------|
+| SCOTUS (8B) | +0.24 | +0.41 | +0.18 |
+| Criminal Planning (8B) | +0.50 | +0.52 | +0.02 |
+
+Both experiments converge on the same conclusion: at 8B scale, base models already encode ethical/legal reasoning structure.
+
+---
+
+### Output Artifacts
+
+| File | Description |
+|------|-------------|
+| `experiment_output_llama31_8b/probe_comparison.json` | Full layer-by-layer R² for 8B models |
+| `experiment_output_llama31_8b/layer_comparison.png` | Visualization for 8B models |
+| `experiment_output_llama31_8b/activations/` | Cached 8B activations (32 layers × 4096 dims) |
 
 ---
 
@@ -476,3 +594,5 @@ Sonnet correctly identified that Bakke involves significant Title VI statutory i
 | 2025-11-28 | Sonnet cross-validation of all 21 Phase 2 annotations (90% accurate/minor_issues) |
 | 2025-11-28 | **Data corrections**: Fixed Hustler opinion (wrong case fetched), adjusted Bakke weights; R² 0.50→0.49 |
 | 2025-11-28 | **Interpretation correction**: Fixed inaccurate "anti-correlated" language; negative R² indicates absence of linear structure, not anti-correlation |
+| 2025-12-11 | **Phase 3**: Llama-3.1-8B replication reveals model size effect — 8B base model already encodes constitutional principles (R² = +0.24 vs -0.25 for 3B), RLHF Δ drops from +0.74 to +0.18 |
+| 2025-12-11 | Updated summary to reflect model size findings; original 3B results remain valid but are now understood as scale-dependent |
