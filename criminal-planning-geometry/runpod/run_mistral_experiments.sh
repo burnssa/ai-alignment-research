@@ -12,7 +12,15 @@ echo ""
 # Ensure we're in the right directory
 cd /workspace/ai-alignment-research
 
+# === Configure HuggingFace cache to use /workspace (has more space than root) ===
+mkdir -p /workspace/hf_cache
+export HF_HOME=/workspace/hf_cache
+export TRANSFORMERS_CACHE=/workspace/hf_cache
+export HF_HUB_ENABLE_HF_TRANSFER=1
+echo "HuggingFace cache set to: /workspace/hf_cache"
+
 # Check GPU
+echo ""
 echo "GPU Information:"
 nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv
 echo ""
