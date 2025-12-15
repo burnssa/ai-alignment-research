@@ -167,6 +167,13 @@ If RLHF creates interpretable geometry for safety:
 - Effect should concentrate in mid-to-late layers
 - Base models may show no or weak linear structure
 
+### Experimental Findings
+
+See **[EXPERIMENT_OUTCOMES.md](./EXPERIMENT_OUTCOMES.md)** for detailed results from experiments on Llama 3.1-8B and Llama 3.2-3B model pairs, including:
+- Quantitative comparison of probe performance across models
+- Layer localization analysis
+- Open questions about interpretation of results
+
 ## Related Work
 
 This experiment builds on methodology from:
