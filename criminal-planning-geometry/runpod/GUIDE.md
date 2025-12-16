@@ -1,10 +1,17 @@
-# RunPod Guide: Geometry Experiments with Mistral-7B
+# RunPod Guide: Geometry Experiments
 
-Run the scotus and criminal-planning geometry experiments on RunPod GPUs using Mistral-7B for cross-model validation.
+Run the scotus and criminal-planning geometry experiments on RunPod GPUs for cross-model validation.
+
+## Supported Models
+
+| Model | Script | VRAM Required |
+|-------|--------|---------------|
+| Mistral-7B | `run_mistral_experiments.sh` | ~14GB |
+| Qwen2.5-7B | `run_qwen_experiments.sh` | ~14GB |
 
 ## Requirements
 
-- **GPU**: RTX 3090/4090 (24GB) - Mistral-7B needs ~14GB VRAM
+- **GPU**: RTX 3090/4090 (24GB) or A40/A100
 - **Storage**: 50GB+ (model weights + activations)
 - **Template**: PyTorch 2.1+
 
@@ -15,7 +22,7 @@ Run the scotus and criminal-planning geometry experiments on RunPod GPUs using M
 - Go to https://www.runpod.io/console/pods
 - Select **RTX 3090** or **RTX 4090** (24GB VRAM)
 - Template: **RunPod PyTorch**
-- Container Disk: **50GB**
+- Container Disk: **70GB** (recommended)
 - Click **Deploy**
 
 ### 2. Setup Environment (Inside RunPod)
@@ -42,46 +49,57 @@ EOF
 
 ### 3. Run Experiments
 
-#### Option A: Run Both Experiments (Recommended)
+#### Option A: Run Full Experiment Suite
 
+**For Mistral-7B:**
 ```bash
 cd /workspace/ai-alignment-research
 bash criminal-planning-geometry/runpod/run_mistral_experiments.sh
 ```
 
+**For Qwen2.5-7B:**
+```bash
+cd /workspace/ai-alignment-research
+bash criminal-planning-geometry/runpod/run_qwen_experiments.sh
+```
+
 #### Option B: Run Individually
 
-**SCOTUS experiment:**
+**SCOTUS experiment (Qwen2.5-7B example):**
 ```bash
 cd /workspace/ai-alignment-research/scotus-constitutional-geometry
 python run_experiment.py \
     --phase extract \
-    --model-pair mistral-7b \
-    --output-dir ./experiment_output_mistral_7b \
-    --skip-fetch \
+    --model-pair qwen2.5-7b \
+    --output-dir ./experiment_output_qwen25_7b \
+    --device cuda \
     --include-phase2
 
 python run_experiment.py \
     --phase probe \
-    --output-dir ./experiment_output_mistral_7b
+    --output-dir ./experiment_output_qwen25_7b
 ```
 
-**Criminal Planning experiment:**
+**Criminal Planning experiment (Qwen2.5-7B example):**
 ```bash
 cd /workspace/ai-alignment-research/criminal-planning-geometry
 python scripts/run_experiment.py \
     --phase extract \
-    --model-pair mistral-7b \
-    --output-dir ./experiment_output_mistral_7b
+    --model-pair qwen2.5-7b \
+    --output-dir ./experiment_output_qwen25_7b
 
 python scripts/run_experiment.py \
     --phase generate \
-    --model-pair mistral-7b \
-    --output-dir ./experiment_output_mistral_7b
+    --model-pair qwen2.5-7b \
+    --output-dir ./experiment_output_qwen25_7b
+
+python scripts/run_experiment.py \
+    --phase score \
+    --output-dir ./experiment_output_qwen25_7b
 
 python scripts/run_experiment.py \
     --phase analyze \
-    --output-dir ./experiment_output_mistral_7b
+    --output-dir ./experiment_output_qwen25_7b
 ```
 
 ## Time Estimates
@@ -91,8 +109,9 @@ python scripts/run_experiment.py \
 | Activation extraction (base) | ~15 min | ~10 min |
 | Activation extraction (aligned) | ~15 min | ~10 min |
 | Response generation | N/A | ~20 min |
+| Scoring (Patronus) | N/A | ~5 min |
 | Probe training | ~5 min | ~5 min |
-| **Total** | ~35 min | ~45 min |
+| **Total** | ~35 min | ~50 min |
 
 ## Download Results
 
@@ -101,44 +120,40 @@ From your **local machine**:
 ```bash
 export POD_ID="your-pod-id"
 
-# Download scotus results
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_mistral_7b/ ~/Downloads/scotus_mistral_results/
+# Download Qwen results
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_qwen25_7b/ ~/Downloads/scotus_qwen_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_qwen25_7b/ ~/Downloads/criminal_qwen_results/
 
-# Download criminal-planning results
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_mistral_7b/ ~/Downloads/criminal_planning_mistral_results/
+# Download Mistral results
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_mistral_7b/ ~/Downloads/scotus_mistral_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_mistral_7b/ ~/Downloads/criminal_mistral_results/
 ```
 
 ## Expected Output
 
 ```
-scotus-constitutional-geometry/experiment_output_mistral_7b/
+experiment_output_qwen25_7b/
 ├── activations/
-│   ├── base/     # Mistral-7B-v0.1 activations
-│   └── aligned/  # Mistral-7B-Instruct-v0.1 activations
-├── probe_comparison.json
-└── layer_comparison.png
-
-criminal-planning-geometry/experiment_output_mistral_7b/
-├── activations/
-│   ├── base/
-│   └── aligned/
+│   ├── base/     # Qwen2.5-7B activations
+│   └── aligned/  # Qwen2.5-7B-Instruct activations
 ├── responses/
+├── scores/
 ├── analysis/
 │   ├── summary.json
 │   └── plot_*.png
-└── scores/
+└── probe_comparison.json (SCOTUS only)
 ```
 
 ## Cost Estimate
 
 - **RunPod RTX 3090**: ~$0.30-0.40/hr
-- **Runtime**: ~1.5 hours total
-- **Total**: ~$0.50-0.60
+- **Runtime per model**: ~1.5 hours total
+- **Total per model**: ~$0.50-0.60
 
 ## Troubleshooting
 
 ### "CUDA out of memory"
-Mistral-7B is large. Try:
+Both Qwen2.5-7B and Mistral-7B require ~14GB VRAM. Try:
 ```bash
 # Clear GPU cache between models
 python -c "import torch; torch.cuda.empty_cache()"
@@ -146,3 +161,12 @@ python -c "import torch; torch.cuda.empty_cache()"
 
 ### "Model not found on HuggingFace"
 Ensure HF_TOKEN is set in .env for gated model access.
+
+### "Disk quota exceeded"
+Use 70GB container disk instead of 30GB. Model weights + activations are large.
+
+### "transformer_lens import errors"
+Ensure correct versions:
+```bash
+pip install --upgrade torch torchvision transformers transformer-lens
+```
