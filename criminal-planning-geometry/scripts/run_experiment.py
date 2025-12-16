@@ -111,11 +111,12 @@ def run_extraction(config: dict):
     method = config.get("extraction_method", "last_token")
     device = config.get("device", "auto")
     load_in_8bit = config.get("load_in_8bit", False)
+    use_bfloat16 = config.get("use_bfloat16", False)
 
     # Extract from base model
     base_dir = output_dir / "activations" / "base"
     print(f"\n--- BASE MODEL: {model_info['base']} ---")
-    extractor = ActivationExtractor(model_info["base"], device=device, load_in_8bit=load_in_8bit)
+    extractor = ActivationExtractor(model_info["base"], device=device, load_in_8bit=load_in_8bit, use_bfloat16=use_bfloat16)
     extractor.extract_batch(prompts, method=method, output_dir=str(base_dir))
 
     # Free memory
@@ -127,7 +128,7 @@ def run_extraction(config: dict):
     # Extract from aligned model
     aligned_dir = output_dir / "activations" / "aligned"
     print(f"\n--- ALIGNED MODEL: {model_info['aligned']} ---")
-    extractor = ActivationExtractor(model_info["aligned"], device=device, load_in_8bit=load_in_8bit)
+    extractor = ActivationExtractor(model_info["aligned"], device=device, load_in_8bit=load_in_8bit, use_bfloat16=use_bfloat16)
     extractor.extract_batch(prompts, method=method, output_dir=str(aligned_dir))
 
     del extractor
@@ -410,6 +411,11 @@ def main():
         action="store_true",
         help="Use 8-bit quantization for large models (70B+)"
     )
+    parser.add_argument(
+        "--use-bfloat16",
+        action="store_true",
+        help="Use bfloat16 instead of float16 (more stable, avoids NaN)"
+    )
 
     args = parser.parse_args()
 
@@ -422,6 +428,7 @@ def main():
     if args.output_dir:
         config["output_dir"] = args.output_dir
     config["load_in_8bit"] = args.load_in_8bit
+    config["use_bfloat16"] = args.use_bfloat16
 
     # Resolve data path
     data_file = Path(__file__).parent.parent / args.data

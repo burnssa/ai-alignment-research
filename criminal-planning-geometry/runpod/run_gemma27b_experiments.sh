@@ -75,7 +75,8 @@ python run_experiment.py \
     --model-pair gemma2-27b \
     --output-dir ./experiment_output_gemma2_27b \
     --device cuda \
-    --include-phase2
+    --include-phase2 \
+    --use-bfloat16
 
 # Clear GPU memory
 python -c "import torch; torch.cuda.empty_cache(); import gc; gc.collect()"
@@ -118,7 +119,8 @@ echo "Extracting activations with Gemma 2-27B..."
 python scripts/run_experiment.py \
     --phase extract \
     --model-pair gemma2-27b \
-    --output-dir ./experiment_output_gemma2_27b
+    --output-dir ./experiment_output_gemma2_27b \
+    --use-bfloat16
 
 # Clear GPU memory
 python -c "import torch; torch.cuda.empty_cache(); import gc; gc.collect()"

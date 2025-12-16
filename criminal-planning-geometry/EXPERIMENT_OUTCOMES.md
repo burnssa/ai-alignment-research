@@ -4,7 +4,9 @@
 
 ## Executive Summary
 
-We tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **aligned models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across four model families (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B, Qwen2.5-7B). Notably, Qwen shows divergent behavior on response toxicity, suggesting model-family-specific safety mechanisms.
+We tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **aligned models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across four model families at 7B-8B scale (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B, Qwen2.5-7B). Notably, Qwen-7B shows divergent behavior on response toxicity, suggesting model-family-specific safety mechanisms.
+
+**Major finding at scale**: Qwen2.5-32B shows **reversed alignment effects** for criminal planning (base outperforms aligned across all targets) while maintaining positive effects for SCOTUS constitutional geometry. This suggests alignment geometry may be task-dependent at larger scales.
 
 ## Models Tested
 
@@ -14,6 +16,7 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 | Llama 3.2-3B / 3B-Instruct | 28 | `experiment_output_llama32_3b/` |
 | Mistral-7B / 7B-Instruct | 32 | `experiment_output_mistral_7b/` |
 | Qwen2.5-7B / 7B-Instruct | 28 | `experiment_output_qwen25_7b/` |
+| **Qwen2.5-32B / 32B-Instruct** | **64** | `experiment_output_qwen25_32b/` |
 
 ## Results Summary
 
@@ -37,6 +40,10 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 | | Response Toxicity | 0.013 | **-0.043** | **-0.056** |
 | | Restraint Delta | -0.041 | -0.001 | +0.040 |
 | | Joint Dimensions | 0.502 | 0.509 | +0.007 |
+| **Qwen2.5-32B** | Prompt Severity | **0.228** | 0.187 | **-0.041** |
+| | Response Toxicity | 0.063 | 0.058 | -0.005 |
+| | Restraint Delta | 0.166 | 0.165 | -0.001 |
+| | Joint Dimensions | 0.506 | 0.499 | -0.007 |
 
 ### Best Performing Layers
 
@@ -177,6 +184,58 @@ We also ran the SCOTUS constitutional principles experiment on Mistral-7B and Qw
 - Mistral peaks late (layer 26/32, ~81%)
 - Qwen peaks mid-network (layer 16/28, ~57%)
 
+## Scale Effects: Qwen2.5-32B Results (Major Finding)
+
+We ran Qwen2.5-32B (64 layers, 32B parameters) to test whether larger scale affects alignment geometry. **The results are striking**: alignment shows NEGATIVE effects on criminal planning but POSITIVE effects on SCOTUS.
+
+### Criminal Planning Results (32B)
+
+| Target | Base R² | Aligned R² | Improvement |
+|--------|---------|------------|-------------|
+| Prompt Severity | **0.228** | 0.187 | **-0.041** |
+| Response Toxicity | 0.063 | 0.058 | -0.005 |
+| Restraint Delta | 0.166 | 0.165 | -0.001 |
+| Joint Dimensions | 0.506 | 0.499 | -0.007 |
+
+**The base model outperforms the aligned model across ALL targets.** This is the opposite pattern from all smaller models (7B-8B).
+
+### SCOTUS Results (32B)
+
+| Metric | Base | Aligned | Improvement |
+|--------|------|---------|-------------|
+| Best R² | 0.063 (layer 29) | 0.205 (layer 49) | **+0.142** |
+| Peak Layer | 29/64 (~45%) | 49/64 (~77%) | Shifts later |
+
+**Alignment improves SCOTUS constitutional geometry** with a +0.142 R² gain - consistent with smaller models.
+
+### Interpretation: Task-Dependent Alignment Geometry at Scale
+
+The 32B model shows a **task-specific divergence**:
+
+1. **Criminal Planning (negative)**: The base model encodes prompt severity more linearly than the aligned model
+2. **SCOTUS (positive)**: The aligned model encodes constitutional principles more linearly than the base model
+
+**Possible explanations**:
+
+**A. Distributed vs. Localized Representations**: At 32B scale, the base model may develop more localized (linear) representations for general concepts like "harm severity", while the aligned model distributes this across more dimensions to enable fine-grained refusal decisions. Constitutional law concepts may require explicit training (via RLHF) to become linearly decodable at all.
+
+**B. Training Objective Differences**: Qwen's safety training may specifically target refusal behavior through non-geometric mechanisms (attention gating, output filtering) rather than representational restructuring. This would explain why criminal planning geometry degrades while safety behavior improves.
+
+**C. Saturation Hypothesis**: At 32B scale, the base model may already have sufficient capacity to develop linear safety representations emergently, while RLHF training "reorganizes" these representations in ways that help behavior but hurt linear probe accuracy.
+
+**D. Layer Depth Effects**: The 64-layer network may encode information very differently than 28-32 layer networks, with safety-relevant features developing at different relative depths.
+
+### Comparison Table: Scale Effects
+
+| Model | Params | Criminal Planning Δ | SCOTUS Δ | Pattern |
+|-------|--------|---------------------|----------|---------|
+| Llama 3.2-3B | 3B | +0.185 (severity) | N/A | Alignment helps |
+| Qwen2.5-7B | 7B | +0.064 (severity) | +0.37 | Alignment helps |
+| Llama 3.1-8B | 8B | +0.117 (severity) | +0.17 | Alignment helps |
+| **Qwen2.5-32B** | **32B** | **-0.041** (severity) | **+0.14** | **DIVERGENT** |
+
+**The 32B scale reveals that alignment geometry may be task-dependent at large scales** - a finding not visible at 7B-8B scale.
+
 ## Open Questions and Interpretive Challenges
 
 ### 1. Why does the smaller model show larger alignment improvements?
@@ -276,6 +335,14 @@ experiment_output_mistral_7b/         # Mistral-7B results (cross-model validati
     └── probe_*.json
 
 experiment_output_qwen25_7b/          # Qwen2.5-7B results (cross-model validation)
+├── activations/{base,aligned}/*.npz
+├── responses/responses.json
+├── scores/patronus_scores.json
+└── analysis/
+    ├── summary.json
+    └── probe_*.json
+
+experiment_output_qwen25_32b/         # Qwen2.5-32B results (scale validation)
 ├── activations/{base,aligned}/*.npz
 ├── responses/responses.json
 ├── scores/patronus_scores.json

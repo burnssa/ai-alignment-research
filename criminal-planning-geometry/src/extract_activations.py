@@ -92,7 +92,8 @@ class ActivationExtractor:
         model_name: str,
         device: str = "auto",
         dtype: torch.dtype = torch.float16,
-        load_in_8bit: bool = False
+        load_in_8bit: bool = False,
+        use_bfloat16: bool = False
     ):
         """
         Initialize with a HuggingFace model name.
@@ -102,7 +103,10 @@ class ActivationExtractor:
             device: "auto", "cuda", "cpu", or "mps"
             dtype: torch.float16 or torch.float32
             load_in_8bit: Use 8-bit quantization (for large models like 70B)
+            use_bfloat16: Use bfloat16 instead of float16 (more stable, less NaN)
         """
+        if use_bfloat16:
+            dtype = torch.bfloat16
         if not TRANSFORMER_LENS_AVAILABLE:
             raise ImportError("transformer_lens required. Install with: pip install transformer-lens")
 
@@ -187,9 +191,10 @@ class ActivationExtractor:
             resid = cache[f"blocks.{layer}.hook_resid_post"]
 
             if method == "last_token":
-                layer_act = resid[0, -1, :].cpu().numpy()
+                # .float() converts bfloat16 to float32 for numpy compatibility
+                layer_act = resid[0, -1, :].float().cpu().numpy()
             elif method == "mean_pool":
-                layer_act = resid[0].mean(dim=0).cpu().numpy()
+                layer_act = resid[0].mean(dim=0).float().cpu().numpy()
             elif method == "eos_token":
                 eos_id = self.model.tokenizer.eos_token_id
                 eos_positions = (tokens[0] == eos_id).nonzero()
@@ -197,7 +202,7 @@ class ActivationExtractor:
                     pos = eos_positions[0].item()
                 else:
                     pos = -1
-                layer_act = resid[0, pos, :].cpu().numpy()
+                layer_act = resid[0, pos, :].float().cpu().numpy()
             else:
                 raise ValueError(f"Unknown method: {method}")
 
