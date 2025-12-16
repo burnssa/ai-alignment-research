@@ -111,6 +111,10 @@ class ActivationExtractor:
             "base": "mistralai/Mistral-7B-v0.1",
             "aligned": "mistralai/Mistral-7B-Instruct-v0.1"
         },
+        "qwen2.5-7b": {
+            "base": "Qwen/Qwen2.5-7B",
+            "aligned": "Qwen/Qwen2.5-7B-Instruct"
+        },
         "pythia-6.9b": {
             "base": "EleutherAI/pythia-6.9b",
             "aligned": "EleutherAI/pythia-6.9b"  # No official aligned version
