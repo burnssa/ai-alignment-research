@@ -144,7 +144,8 @@ class ActivationExtractor:
         model_name: str,
         device: str = "auto",
         dtype: torch.dtype = torch.float16,
-        load_in_8bit: bool = False
+        load_in_8bit: bool = False,
+        use_bfloat16: bool = False
     ):
         """
         Initialize with a HuggingFace model name.
@@ -154,7 +155,10 @@ class ActivationExtractor:
             device: "auto", "cuda", "cpu", or "mps"
             dtype: torch.float16 or torch.float32
             load_in_8bit: Use 8-bit quantization (for large models like 70B)
+            use_bfloat16: Use bfloat16 instead of float16 (more stable, less NaN)
         """
+        if use_bfloat16:
+            dtype = torch.bfloat16
         if not TRANSFORMER_LENS_AVAILABLE:
             raise ImportError("transformer_lens required. Install with: pip install transformer-lens")
 

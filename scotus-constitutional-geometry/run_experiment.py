@@ -284,7 +284,8 @@ def extract_activations_phase(
     model_pair: str = "llama2-7b",
     method: str = "last_token",
     device: str = "auto",
-    load_in_8bit: bool = False
+    load_in_8bit: bool = False,
+    use_bfloat16: bool = False
 ):
     """
     Extract residual stream activations from base and aligned models.
@@ -322,7 +323,8 @@ def extract_activations_phase(
         extractor = ActivationExtractor(
             model_info["base"],
             device=device,
-            load_in_8bit=load_in_8bit
+            load_in_8bit=load_in_8bit,
+            use_bfloat16=use_bfloat16
         )
         extractor.extract_batch(missing_prompts, method=method, output_dir=str(base_dir))
         del extractor  # Free memory
@@ -346,7 +348,8 @@ def extract_activations_phase(
         extractor = ActivationExtractor(
             model_info["aligned"],
             device=device,
-            load_in_8bit=load_in_8bit
+            load_in_8bit=load_in_8bit,
+            use_bfloat16=use_bfloat16
         )
         extractor.extract_batch(missing_prompts, method=method, output_dir=str(aligned_dir))
         del extractor  # Free memory
@@ -426,7 +429,8 @@ def run_full_experiment(
     model_pair: str = "llama2-7b",
     api_key: str = None,
     skip_fetch: bool = False,
-    load_in_8bit: bool = False
+    load_in_8bit: bool = False,
+    use_bfloat16: bool = False
 ):
     """
     Run the complete experiment pipeline.
@@ -473,7 +477,8 @@ def run_full_experiment(
         output_dir,
         model_pair=model_pair,
         method="last_token",
-        load_in_8bit=load_in_8bit
+        load_in_8bit=load_in_8bit,
+        use_bfloat16=use_bfloat16
     )
     
     # Phase 4: Train probes and compare
@@ -558,6 +563,11 @@ def main():
         action="store_true",
         help="Use 8-bit quantization for large models (70B+)"
     )
+    parser.add_argument(
+        "--use-bfloat16",
+        action="store_true",
+        help="Use bfloat16 instead of float16 (more stable, avoids NaN)"
+    )
 
     args = parser.parse_args()
 
@@ -579,7 +589,8 @@ def main():
             model_pair=args.model_pair,
             api_key=api_key,
             skip_fetch=args.skip_fetch,
-            load_in_8bit=args.load_in_8bit
+            load_in_8bit=args.load_in_8bit,
+            use_bfloat16=args.use_bfloat16
         )
     elif args.phase == "fetch":
         fetch_opinions(args.output_dir)
@@ -591,7 +602,8 @@ def main():
             args.output_dir,
             model_pair=args.model_pair,
             device=args.device,
-            load_in_8bit=args.load_in_8bit
+            load_in_8bit=args.load_in_8bit,
+            use_bfloat16=args.use_bfloat16
         )
     elif args.phase == "probe":
         train_and_compare(args.output_dir)
