@@ -75,7 +75,8 @@ class ResponseGenerator:
         self,
         model_name: str,
         device: str = "auto",
-        load_in_4bit: bool = False
+        load_in_4bit: bool = False,
+        use_bfloat16: bool = False
     ):
         if not TRANSFORMERS_AVAILABLE:
             raise ImportError("transformers required. Install with: pip install transformers")
@@ -87,9 +88,12 @@ class ResponseGenerator:
 
         print(f"Loading {model_name}...")
 
+        # Use bfloat16 for models like Gemma 2 that have fp16 numerical instability
+        dtype = torch.bfloat16 if use_bfloat16 else torch.float16
+
         load_kwargs = {
             "device_map": "auto" if self.device == "cuda" else None,
-            "torch_dtype": torch.float16,
+            "torch_dtype": dtype,
         }
 
         if load_in_4bit:
@@ -97,10 +101,10 @@ class ResponseGenerator:
                 from transformers import BitsAndBytesConfig
                 load_kwargs["quantization_config"] = BitsAndBytesConfig(
                     load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16
+                    bnb_4bit_compute_dtype=dtype
                 )
             except ImportError:
-                print("Warning: bitsandbytes not available, loading in fp16")
+                print("Warning: bitsandbytes not available, loading in fp16/bf16")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)

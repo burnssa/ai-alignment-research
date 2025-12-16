@@ -174,9 +174,11 @@ def run_generation(config: dict):
         "top_p": 0.9
     })
 
+    use_bfloat16 = config.get("use_bfloat16", False)
+
     # Generate from base model
     print(f"\n--- BASE MODEL: {model_info['base']} ---")
-    generator = ResponseGenerator(model_info["base"])
+    generator = ResponseGenerator(model_info["base"], use_bfloat16=use_bfloat16)
     base_responses = generator.generate_batch(
         prompts, model_type="base",
         output_file=str(responses_file),
@@ -190,7 +192,7 @@ def run_generation(config: dict):
 
     # Generate from aligned model
     print(f"\n--- ALIGNED MODEL: {model_info['aligned']} ---")
-    generator = ResponseGenerator(model_info["aligned"])
+    generator = ResponseGenerator(model_info["aligned"], use_bfloat16=use_bfloat16)
     aligned_responses = generator.generate_batch(
         prompts, model_type="aligned",
         output_file=str(responses_file),
