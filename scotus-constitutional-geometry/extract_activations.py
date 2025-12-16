@@ -143,15 +143,17 @@ class ActivationExtractor:
         self,
         model_name: str,
         device: str = "auto",
-        dtype: torch.dtype = torch.float16
+        dtype: torch.dtype = torch.float16,
+        load_in_8bit: bool = False
     ):
         """
         Initialize with a HuggingFace model name.
-        
+
         Args:
             model_name: HuggingFace model identifier
             device: "auto", "cuda", "cpu", or "mps"
             dtype: torch.float16 or torch.float32
+            load_in_8bit: Use 8-bit quantization (for large models like 70B)
         """
         if not TRANSFORMER_LENS_AVAILABLE:
             raise ImportError("transformer_lens required. Install with: pip install transformer-lens")
@@ -161,12 +163,23 @@ class ActivationExtractor:
 
         self.model_name = model_name
         self.device = self._resolve_device(device)
-        
+
         print(f"Loading {model_name} on {self.device}...")
+
+        load_kwargs = {
+            "device": self.device,
+            "dtype": dtype,
+        }
+        if load_in_8bit:
+            print("  Using 8-bit quantization...")
+            load_kwargs["load_in_8bit"] = True
+            # 8-bit requires device_map for proper loading
+            load_kwargs["device_map"] = "auto"
+            load_kwargs.pop("device")  # device_map handles this
+
         self.model = HookedTransformer.from_pretrained(
             model_name,
-            device=self.device,
-            dtype=dtype
+            **load_kwargs
         )
         self.model.eval()
         

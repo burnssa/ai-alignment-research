@@ -110,11 +110,12 @@ def run_extraction(config: dict):
 
     method = config.get("extraction_method", "last_token")
     device = config.get("device", "auto")
+    load_in_8bit = config.get("load_in_8bit", False)
 
     # Extract from base model
     base_dir = output_dir / "activations" / "base"
     print(f"\n--- BASE MODEL: {model_info['base']} ---")
-    extractor = ActivationExtractor(model_info["base"], device=device)
+    extractor = ActivationExtractor(model_info["base"], device=device, load_in_8bit=load_in_8bit)
     extractor.extract_batch(prompts, method=method, output_dir=str(base_dir))
 
     # Free memory
@@ -126,7 +127,7 @@ def run_extraction(config: dict):
     # Extract from aligned model
     aligned_dir = output_dir / "activations" / "aligned"
     print(f"\n--- ALIGNED MODEL: {model_info['aligned']} ---")
-    extractor = ActivationExtractor(model_info["aligned"], device=device)
+    extractor = ActivationExtractor(model_info["aligned"], device=device, load_in_8bit=load_in_8bit)
     extractor.extract_batch(prompts, method=method, output_dir=str(aligned_dir))
 
     del extractor
@@ -404,6 +405,11 @@ def main():
         default=None,
         help="Output directory (overrides config.yaml)"
     )
+    parser.add_argument(
+        "--load-in-8bit",
+        action="store_true",
+        help="Use 8-bit quantization for large models (70B+)"
+    )
 
     args = parser.parse_args()
 
@@ -415,6 +421,7 @@ def main():
         config["model_pair"] = args.model_pair
     if args.output_dir:
         config["output_dir"] = args.output_dir
+    config["load_in_8bit"] = args.load_in_8bit
 
     # Resolve data path
     data_file = Path(__file__).parent.parent / args.data

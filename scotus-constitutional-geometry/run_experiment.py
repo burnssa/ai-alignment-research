@@ -283,7 +283,8 @@ def extract_activations_phase(
     output_dir: str,
     model_pair: str = "llama2-7b",
     method: str = "last_token",
-    device: str = "auto"
+    device: str = "auto",
+    load_in_8bit: bool = False
 ):
     """
     Extract residual stream activations from base and aligned models.
@@ -320,7 +321,8 @@ def extract_activations_phase(
         missing_prompts = [p for p in prompts if p["case_id"] in missing_base]
         extractor = ActivationExtractor(
             model_info["base"],
-            device=device
+            device=device,
+            load_in_8bit=load_in_8bit
         )
         extractor.extract_batch(missing_prompts, method=method, output_dir=str(base_dir))
         del extractor  # Free memory
@@ -343,7 +345,8 @@ def extract_activations_phase(
         missing_prompts = [p for p in prompts if p["case_id"] in missing_aligned]
         extractor = ActivationExtractor(
             model_info["aligned"],
-            device=device
+            device=device,
+            load_in_8bit=load_in_8bit
         )
         extractor.extract_batch(missing_prompts, method=method, output_dir=str(aligned_dir))
         del extractor  # Free memory
@@ -422,7 +425,8 @@ def run_full_experiment(
     output_dir: str = "./experiment_output",
     model_pair: str = "llama2-7b",
     api_key: str = None,
-    skip_fetch: bool = False
+    skip_fetch: bool = False,
+    load_in_8bit: bool = False
 ):
     """
     Run the complete experiment pipeline.
@@ -468,7 +472,8 @@ def run_full_experiment(
     extract_activations_phase(
         output_dir,
         model_pair=model_pair,
-        method="last_token"
+        method="last_token",
+        load_in_8bit=load_in_8bit
     )
     
     # Phase 4: Train probes and compare
@@ -548,6 +553,11 @@ def main():
         action="store_true",
         help="Include Phase 2 cases (22 additional cases, 50 total)"
     )
+    parser.add_argument(
+        "--load-in-8bit",
+        action="store_true",
+        help="Use 8-bit quantization for large models (70B+)"
+    )
 
     args = parser.parse_args()
 
@@ -568,7 +578,8 @@ def main():
             output_dir=args.output_dir,
             model_pair=args.model_pair,
             api_key=api_key,
-            skip_fetch=args.skip_fetch
+            skip_fetch=args.skip_fetch,
+            load_in_8bit=args.load_in_8bit
         )
     elif args.phase == "fetch":
         fetch_opinions(args.output_dir)
@@ -579,7 +590,8 @@ def main():
         extract_activations_phase(
             args.output_dir,
             model_pair=args.model_pair,
-            device=args.device
+            device=args.device,
+            load_in_8bit=args.load_in_8bit
         )
     elif args.phase == "probe":
         train_and_compare(args.output_dir)
