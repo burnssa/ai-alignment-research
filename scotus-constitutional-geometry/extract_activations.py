@@ -248,13 +248,14 @@ class ActivationExtractor:
         
         for layer in range(self.n_layers):
             resid = cache[f"blocks.{layer}.hook_resid_post"]  # (1, seq, d_model)
-            
+
             if method == "last_token":
                 # Use final token position
-                layer_act = resid[0, -1, :].cpu().numpy()  # (d_model,)
+                # .float() converts bfloat16 to float32 for numpy compatibility
+                layer_act = resid[0, -1, :].float().cpu().numpy()  # (d_model,)
             elif method == "mean_pool":
                 # Average across sequence
-                layer_act = resid[0].mean(dim=0).cpu().numpy()  # (d_model,)
+                layer_act = resid[0].mean(dim=0).float().cpu().numpy()  # (d_model,)
             elif method == "eos_token":
                 # Try to find EOS, fall back to last
                 eos_id = self.model.tokenizer.eos_token_id
@@ -263,7 +264,7 @@ class ActivationExtractor:
                     pos = eos_positions[0].item()
                 else:
                     pos = -1
-                layer_act = resid[0, pos, :].cpu().numpy()
+                layer_act = resid[0, pos, :].float().cpu().numpy()
             else:
                 raise ValueError(f"Unknown method: {method}")
             
