@@ -67,6 +67,15 @@ class ActivationExtractor:
             "base": "Qwen/Qwen2.5-7B",
             "aligned": "Qwen/Qwen2.5-7B-Instruct"
         },
+        # Large models - require A100 80GB+
+        "qwen2.5-32b": {
+            "base": "Qwen/Qwen2.5-32B",
+            "aligned": "Qwen/Qwen2.5-32B-Instruct"
+        },
+        "llama3.1-70b": {
+            "base": "meta-llama/Llama-3.1-70B",
+            "aligned": "meta-llama/Llama-3.1-70B-Instruct"
+        },
         # Smaller models for testing
         "pythia-410m": {
             "base": "EleutherAI/pythia-410m",

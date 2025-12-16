@@ -18,13 +18,20 @@
 | Llama-3.2-3B-Instruct | Layer 27 | +0.49 | **+0.74** | Strong RLHF effect |
 | Llama-3.1-8B (base) | Layer 30 | +0.24 | — | **Positive encoding pre-RLHF** |
 | Llama-3.1-8B-Instruct | Layer 12 | +0.41 | **+0.18** | Moderate RLHF effect |
+| Mistral-7B (base) | Layer 15 | +0.26 | — | Similar to 8B Llama base |
+| Mistral-7B-Instruct | Layer 26 | +0.40 | **+0.14** | Consistent with Llama |
+| Qwen2.5-7B (base) | Layer 3 | **-0.14** | — | Weak negative encoding |
+| Qwen2.5-7B-Instruct | Layer 16 | **+0.23** | **+0.37** | **Weaker signal, larger delta** |
 
 ### Key Observations
 
-- **Original finding confirmed**: RLHF improves constitutional principle encoding (aligned > base in both model sizes)
+- **Original finding confirmed**: RLHF improves constitutional principle encoding (aligned > base in all model families)
 - **Model size matters**: The 8B base model already encodes constitutional principles (R² = +0.24), unlike the 3B base (R² = -0.25)
 - **RLHF effect scales inversely with model size**: RLHF Δ drops from +0.74 (3B) to +0.18 (8B) — a 75% reduction
+- **Cross-model validation**: Mistral-7B shows similar pattern to Llama (base +0.26 → aligned +0.40)
+- **Qwen shows divergent behavior**: Weaker overall signal (aligned R² = 0.23 vs ~0.40 for others), but largest RLHF delta (+0.37)
 - Effect localizes to mid-to-upper layers, with the aligned-base gap peaking at +2.37 at layer 20 (3B model)
+- **Layer localization varies by model**: Llama peaks early (L12), Mistral peaks late (L26), Qwen peaks mid (L16)
 - Results validated via permutation testing and cross-annotator agreement (Sonnet validation)
 
 ### Interpretation
@@ -33,9 +40,10 @@ The initial finding that RLHF creates geometric structure for constitutional con
 
 ### Limitations
 
-- Cross-model comparison limited to Llama family; other architectures needed
+- ~~Cross-model comparison limited to Llama family; other architectures needed~~ ✓ *Now validated on Mistral-7B and Qwen2.5-7B (Dec 2025)*
 - 49 SCOTUS cases; larger corpus needed for robust train/test splits
 - Causal link to downstream behavior not yet established
+- **Qwen's weak signal** may reflect training data differences (Chinese vs Western corpora) rather than architectural factors
 
 ---
 
@@ -258,7 +266,7 @@ From README.md:
 - [x] **Llama-3.1-8B replication**: Run on larger model via RunPod ✓ COMPLETED (see Phase 3)
 
 ### Short-Term (Next 2 Weeks)
-- [ ] **Cross-model replication**: Mistral-7B, Llama-2-7B
+- [x] **Cross-model replication**: ~~Mistral-7B, Llama-2-7B~~ ✓ Completed with Mistral-7B and Qwen2.5-7B (Dec 2025)
 - [ ] **Behavioral divergence test**: Do models respond differently to prompts?
 - [ ] **Bootstrap confidence intervals**: Quantify uncertainty on R² estimates
 
@@ -584,6 +592,102 @@ Both experiments converge on the same conclusion: at 8B scale, base models alrea
 
 ---
 
+## Phase 4: Cross-Model Validation (Mistral-7B & Qwen2.5-7B)
+
+**Date**: 2025-12-16
+**Status**: Complete - Cross-model validation confirms findings, reveals Qwen divergence
+
+### Motivation
+
+Phases 1-3 used only Llama family models. To test whether constitutional geometry findings generalize across model architectures, we ran the same experiment on Mistral-7B and Qwen2.5-7B (both trained by different organizations with different data/methods).
+
+### Experiment Configuration
+
+| Parameter | Mistral-7B | Qwen2.5-7B |
+|-----------|------------|------------|
+| **Base Model** | mistralai/Mistral-7B-v0.1 | Qwen/Qwen2.5-7B |
+| **Aligned Model** | mistralai/Mistral-7B-Instruct-v0.1 | Qwen/Qwen2.5-7B-Instruct |
+| **Architecture** | 32 layers | 28 layers |
+| **Sample Size** | 49 SCOTUS cases | 49 SCOTUS cases |
+| **Execution** | RunPod GPU instance | RunPod GPU instance |
+
+---
+
+### Key Finding 1: Mistral Confirms Llama Pattern
+
+Mistral-7B shows nearly identical results to Llama-3.1-8B:
+
+| Metric | Llama 8B | Mistral 7B |
+|--------|----------|------------|
+| Best Base R² | +0.24 (L30) | +0.26 (L15) |
+| Best Aligned R² | +0.41 (L12) | +0.40 (L26) |
+| RLHF Δ | +0.18 | +0.14 |
+
+**Interpretation**: Constitutional principle encoding generalizes across Western-trained models. The ~0.40 aligned R² appears to be a consistent ceiling.
+
+---
+
+### Key Finding 2: Qwen Shows Significantly Weaker Signal
+
+Qwen2.5-7B shows dramatically different results:
+
+| Metric | Llama/Mistral | Qwen |
+|--------|---------------|------|
+| Best Base R² | +0.24 to +0.26 | **-0.14** |
+| Best Aligned R² | +0.40 to +0.41 | **+0.23** |
+| RLHF Δ | +0.14 to +0.18 | **+0.37** |
+
+**Key observations**:
+- Qwen base model shows **negative** R² (worse than random), unlike Llama/Mistral base models
+- Qwen aligned model achieves only **half the R²** of other aligned models (0.23 vs ~0.40)
+- Qwen shows the **largest RLHF improvement** (+0.37) despite weaker absolute performance
+
+---
+
+### Key Finding 3: Layer Localization Varies Significantly
+
+| Model | Best Base Layer | Best Aligned Layer | % Through Network |
+|-------|----------------|-------------------|-------------------|
+| Llama 8B | 30/32 | 12/32 | 94% → 38% |
+| Mistral 7B | 15/32 | 26/32 | 47% → 81% |
+| Qwen 7B | 3/28 | 16/28 | 11% → 57% |
+
+**Observations**:
+- Llama aligned model peaks **early** (38%), base peaks late (94%)
+- Mistral shows opposite pattern: base peaks mid (47%), aligned peaks **late** (81%)
+- Qwen peaks early for base (11%), mid for aligned (57%)
+
+This suggests different architectures encode constitutional concepts at different processing stages.
+
+---
+
+### Interpretation of Qwen Divergence
+
+Qwen's weaker constitutional signal may reflect:
+
+1. **Training data differences**: Qwen was trained primarily on Chinese text, which may include less US constitutional law content than Western models' training data.
+
+2. **Cultural encoding**: Constitutional concepts like "due process" and "federalism" may be more culturally specific than expected, requiring substantial exposure to US legal text to develop linearly-separable representations.
+
+3. **Different safety mechanisms**: Qwen's instruction tuning may achieve safety through different mechanisms than geometric restructuring (e.g., output filtering, attention masking).
+
+4. **Not architectural**: Mistral and Llama have different architectures but show similar results, suggesting the Qwen divergence is **not** primarily architectural.
+
+**Implication**: Constitutional geometry may be a property of **training data and cultural context**, not just model scale or RLHF methodology.
+
+---
+
+### Output Artifacts
+
+| File | Description |
+|------|-------------|
+| `experiment_output_mistral_7b/probe_comparison.json` | Full layer-by-layer R² for Mistral |
+| `experiment_output_mistral_7b/layer_comparison.png` | Visualization for Mistral |
+| `experiment_output_qwen25_7b/probe_comparison.json` | Full layer-by-layer R² for Qwen |
+| `experiment_output_qwen25_7b/layer_comparison.png` | Visualization for Qwen |
+
+---
+
 ## Changelog
 
 | Date | Update |
@@ -596,3 +700,7 @@ Both experiments converge on the same conclusion: at 8B scale, base models alrea
 | 2025-11-28 | **Interpretation correction**: Fixed inaccurate "anti-correlated" language; negative R² indicates absence of linear structure, not anti-correlation |
 | 2025-12-11 | **Phase 3**: Llama-3.1-8B replication reveals model size effect — 8B base model already encodes constitutional principles (R² = +0.24 vs -0.25 for 3B), RLHF Δ drops from +0.74 to +0.18 |
 | 2025-12-11 | Updated summary to reflect model size findings; original 3B results remain valid but are now understood as scale-dependent |
+| 2025-12-16 | **Phase 4**: Cross-model validation with Mistral-7B and Qwen2.5-7B |
+| 2025-12-16 | Mistral confirms Llama pattern (base +0.26, aligned +0.40, Δ +0.14) |
+| 2025-12-16 | **Qwen divergence discovered**: Weaker signal (aligned R² = 0.23 vs ~0.40 for others), possibly due to training data/cultural differences |
+| 2025-12-16 | Updated summary and limitations to reflect cross-model findings |

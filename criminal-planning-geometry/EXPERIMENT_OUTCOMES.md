@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-We tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **aligned models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across three model families (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B).
+We tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **aligned models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across four model families (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B, Qwen2.5-7B). Notably, Qwen shows divergent behavior on response toxicity, suggesting model-family-specific safety mechanisms.
 
 ## Models Tested
 
@@ -13,6 +13,7 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 | Llama 3.1-8B / 8B-Instruct | 32 | `experiment_output/` |
 | Llama 3.2-3B / 3B-Instruct | 28 | `experiment_output_llama32_3b/` |
 | Mistral-7B / 7B-Instruct | 32 | `experiment_output_mistral_7b/` |
+| Qwen2.5-7B / 7B-Instruct | 28 | `experiment_output_qwen25_7b/` |
 
 ## Results Summary
 
@@ -32,6 +33,10 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 | | Response Toxicity | -0.192 | 0.069 | +0.261 |
 | | Restraint Delta | 0.012 | 0.014 | +0.002 |
 | | Joint Dimensions | 0.479 | 0.520 | +0.041 |
+| **Qwen2.5-7B** | Prompt Severity | 0.180 | 0.244 | +0.064 |
+| | Response Toxicity | 0.013 | **-0.043** | **-0.056** |
+| | Restraint Delta | -0.041 | -0.001 | +0.040 |
+| | Joint Dimensions | 0.502 | 0.509 | +0.007 |
 
 ### Best Performing Layers
 
@@ -90,29 +95,30 @@ Predicting all four annotation dimensions jointly (severity, specificity, real_w
 - Similar performance across both model sizes (~0.50-0.52 R²)
 - This suggests harm type classification may not benefit as much from alignment as scalar severity does
 
-## Cross-Model Validation: Mistral-7B Results
+## Cross-Model Validation: Mistral-7B and Qwen2.5-7B Results
 
-To test whether the geometric structures are model-family specific or represent general properties of RLHF, we ran the same experiment on Mistral-7B/7B-Instruct (December 2025).
+To test whether the geometric structures are model-family specific or represent general properties of RLHF, we ran the same experiment on Mistral-7B/7B-Instruct and Qwen2.5-7B/7B-Instruct (December 2025).
 
 ### Key Cross-Model Findings
 
-#### 1. Alignment Advantage Generalizes Across Model Families
+#### 1. Alignment Advantage Generalizes for Prompt Severity
 
-All three models show improved linear predictability in aligned versions:
+All four models show improved linear predictability for prompt severity in aligned versions:
 
-| Target | Llama 8B Δ | Llama 3B Δ | Mistral 7B Δ |
-|--------|------------|------------|--------------|
-| Prompt Severity | +0.117 | +0.185 | +0.086 |
-| Response Toxicity | +0.031 | +0.008 | +0.261 |
-| Restraint Delta | +0.117 | +0.068 | +0.002 |
-| Joint Dimensions | +0.020 | +0.020 | +0.041 |
+| Target | Llama 8B Δ | Llama 3B Δ | Mistral 7B Δ | Qwen 7B Δ |
+|--------|------------|------------|--------------|-----------|
+| Prompt Severity | +0.117 | +0.185 | +0.086 | +0.064 |
+| Response Toxicity | +0.031 | +0.008 | +0.261 | **-0.056** |
+| Restraint Delta | +0.117 | +0.068 | +0.002 | +0.040 |
+| Joint Dimensions | +0.020 | +0.020 | +0.041 | +0.007 |
 
-**Interpretation**: The consistent alignment advantage for prompt severity and joint dimensions across model families suggests RLHF creates similar geometric structures regardless of base architecture.
+**Interpretation**: The consistent alignment advantage for prompt severity across all four model families suggests RLHF creates similar geometric structures regardless of base architecture.
 
 #### 2. Restraint Signal is Model-Dependent
 
-The most striking difference is in restraint delta prediction:
+The restraint delta prediction varies significantly by model family:
 - **Llama models**: Strong alignment improvement (+0.068 to +0.117 R²)
+- **Qwen**: Moderate improvement (+0.040 R²)
 - **Mistral**: Near-zero improvement (+0.002 R²)
 
 **Possible explanations**:
@@ -120,35 +126,56 @@ The most striking difference is in restraint delta prediction:
 - Different model architectures affect where safety-relevant information is stored
 - Mistral's instruction tuning may achieve safety through different mechanisms than geometric separation
 
-#### 3. Response Toxicity Shows Opposite Pattern
+#### 3. Qwen Shows NEGATIVE Toxicity Improvement (Key Finding)
 
-Mistral shows the largest toxicity prediction improvement (+0.261), starting from a negative baseline:
-- **Base Mistral**: R² = -0.19 (worse than random)
-- **Aligned Mistral**: R² = 0.07 (weak positive signal)
+Qwen2.5-7B is the only model where alignment **decreases** linear predictability for response toxicity:
+- **Base Qwen**: R² = 0.013 (weak positive signal)
+- **Aligned Qwen**: R² = **-0.043** (worse than random)
+- **Improvement**: **-0.056** (regression!)
 
-This suggests Mistral's base model has highly non-linear toxicity representations that become more linearly separable after alignment.
+In contrast, Mistral showed the largest positive improvement (+0.261) for toxicity.
 
-#### 4. Joint Dimension Prediction is Remarkably Consistent
+**Possible explanations**:
+- Qwen's safety training may use fundamentally different mechanisms (e.g., output filtering rather than representation restructuring)
+- Cultural/training data differences may affect how toxicity is represented internally
+- Qwen may encode toxicity decisions in attention patterns rather than residual stream
 
-All three aligned models achieve nearly identical joint dimension R² (~0.52):
+This divergence is the most significant finding for cross-model validation - it suggests **toxicity encoding mechanisms are NOT universal across model families**.
+
+#### 4. Joint Dimension Prediction Remains Consistent
+
+All four aligned models achieve similar joint dimension R² (~0.51-0.52):
 - Llama 8B: 0.518
 - Llama 3B: 0.521
 - Mistral 7B: 0.520
+- Qwen 7B: 0.509
 
 This convergence suggests a "ceiling" for linear probing of harm dimensions, possibly reflecting the inherent limits of linear readout from these representations.
 
 ### SCOTUS Constitutional Geometry Cross-Validation
 
-We also ran the SCOTUS constitutional principles experiment on Mistral-7B:
+We also ran the SCOTUS constitutional principles experiment on Mistral-7B and Qwen2.5-7B:
 
 | Model | Best Base R² | Best Aligned R² | Improvement |
 |-------|--------------|-----------------|-------------|
-| Llama 3.1-8B | 0.24 (layer 30) | 0.41 (layer 12) | +0.18 |
+| Llama 3.1-8B | 0.24 (layer 30) | 0.41 (layer 12) | +0.17 |
 | Mistral-7B | 0.26 (layer 15) | 0.40 (layer 26) | +0.14 |
+| Qwen2.5-7B | **-0.14** (layer 3) | **0.23** (layer 16) | **+0.37** |
 
-Both models show substantial alignment improvement for constitutional principle detection, with similar peak performance (~0.40-0.41 R²).
+**Key observations**:
+- Llama and Mistral achieve similar aligned performance (~0.40-0.41 R²)
+- **Qwen shows dramatically weaker signal** for both base (-0.14) and aligned (0.23)
+- Qwen shows the **largest improvement delta** (+0.37) but from a much worse baseline
 
-**Layer localization differs**: Llama peaks early (layer 12) while Mistral peaks late (layer 26), suggesting different architectural paths to similar functionality.
+**Qwen's weaker SCOTUS signal** may reflect:
+- Training data differences (Chinese vs Western training corpora)
+- Constitutional law concepts being more culturally specific than expected
+- Different architectural encoding of legal/political concepts
+
+**Layer localization varies significantly**:
+- Llama peaks early (layer 12/32, ~38%)
+- Mistral peaks late (layer 26/32, ~81%)
+- Qwen peaks mid-network (layer 16/28, ~57%)
 
 ## Open Questions and Interpretive Challenges
 
@@ -247,6 +274,14 @@ experiment_output_mistral_7b/         # Mistral-7B results (cross-model validati
 └── analysis/
     ├── summary.json
     └── probe_*.json
+
+experiment_output_qwen25_7b/          # Qwen2.5-7B results (cross-model validation)
+├── activations/{base,aligned}/*.npz
+├── responses/responses.json
+├── scores/patronus_scores.json
+└── analysis/
+    ├── summary.json
+    └── probe_*.json
 ```
 
 ### Visualizations
@@ -262,7 +297,7 @@ Layer-by-layer R² plots are available in `experiment_output/analysis/plot_*.png
 ## Future Directions
 
 1. **Causal validation**: Test whether activation steering along the learned directions influences model behavior
-2. ~~**Cross-model generalization**: Test whether probes trained on one model transfer to others~~ ✓ *Completed with Mistral-7B (Dec 2025) - findings generalize across model families*
+2. ~~**Cross-model generalization**: Test whether probes trained on one model transfer to others~~ ✓ *Completed with Mistral-7B and Qwen2.5-7B (Dec 2025) - prompt severity generalizes; toxicity encoding is model-specific*
 3. **Harm-type stratification**: Train separate probes by harm category
 4. **Non-linear probes**: Test whether MLPs capture more structure than linear probes
 5. **Generation-time analysis**: Extract activations during generation to better predict output toxicity

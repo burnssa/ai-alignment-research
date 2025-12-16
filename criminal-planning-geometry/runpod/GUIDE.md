@@ -4,25 +4,44 @@ Run the scotus and criminal-planning geometry experiments on RunPod GPUs for cro
 
 ## Supported Models
 
-| Model | Script | VRAM Required |
-|-------|--------|---------------|
-| Mistral-7B | `run_mistral_experiments.sh` | ~14GB |
-| Qwen2.5-7B | `run_qwen_experiments.sh` | ~14GB |
+| Model | Script | VRAM Required | GPU Recommendation |
+|-------|--------|---------------|-------------------|
+| Mistral-7B | `run_mistral_experiments.sh` | ~14GB | RTX 3090/4090 |
+| Qwen2.5-7B | `run_qwen_experiments.sh` | ~14GB | RTX 3090/4090 |
+| **Qwen2.5-32B** | `run_qwen32b_experiments.sh` | ~64GB | A100 80GB |
+| **Llama-3.1-70B** | `run_llama70b_experiments.sh` | ~70GB (8-bit) | A100 80GB |
 
 ## Requirements
 
+### Standard Models (7B)
 - **GPU**: RTX 3090/4090 (24GB) or A40/A100
 - **Storage**: 50GB+ (model weights + activations)
 - **Template**: PyTorch 2.1+
+- **Cost**: ~$0.30-0.40/hr
+
+### Large Models (32B, 70B)
+- **GPU**: A100 80GB (required)
+- **Storage**: 100GB+ (larger model weights)
+- **Template**: PyTorch 2.1+
+- **Cost**: ~$2.00/hr
+- **Note**: Llama-3.1-70B uses 8-bit quantization to fit in 80GB VRAM
 
 ## Quick Start
 
 ### 1. Launch RunPod Instance
 
+**For 7B models (Mistral, Qwen2.5-7B):**
 - Go to https://www.runpod.io/console/pods
 - Select **RTX 3090** or **RTX 4090** (24GB VRAM)
 - Template: **RunPod PyTorch**
 - Container Disk: **70GB** (recommended)
+- Click **Deploy**
+
+**For large models (Qwen2.5-32B, Llama-3.1-70B):**
+- Go to https://www.runpod.io/console/pods
+- Select **A100 80GB** (required - 40GB will NOT work)
+- Template: **RunPod PyTorch**
+- Container Disk: **100GB** (larger model weights)
 - Click **Deploy**
 
 ### 2. Setup Environment (Inside RunPod)
@@ -61,6 +80,18 @@ bash criminal-planning-geometry/runpod/run_mistral_experiments.sh
 ```bash
 cd /workspace/ai-alignment-research
 bash criminal-planning-geometry/runpod/run_qwen_experiments.sh
+```
+
+**For Qwen2.5-32B (A100 80GB required):**
+```bash
+cd /workspace/ai-alignment-research
+bash criminal-planning-geometry/runpod/run_qwen32b_experiments.sh
+```
+
+**For Llama-3.1-70B (A100 80GB required, uses 8-bit quantization):**
+```bash
+cd /workspace/ai-alignment-research
+bash criminal-planning-geometry/runpod/run_llama70b_experiments.sh
 ```
 
 #### Option B: Run Individually
@@ -104,6 +135,8 @@ python scripts/run_experiment.py \
 
 ## Time Estimates
 
+### 7B Models (Mistral, Qwen2.5-7B)
+
 | Phase | SCOTUS | Criminal Planning |
 |-------|--------|-------------------|
 | Activation extraction (base) | ~15 min | ~10 min |
@@ -113,6 +146,19 @@ python scripts/run_experiment.py \
 | Probe training | ~5 min | ~5 min |
 | **Total** | ~35 min | ~50 min |
 
+### Large Models (32B, 70B on A100 80GB)
+
+| Phase | SCOTUS | Criminal Planning |
+|-------|--------|-------------------|
+| Activation extraction (base) | ~45 min | ~30 min |
+| Activation extraction (aligned) | ~45 min | ~30 min |
+| Response generation | N/A | ~60 min |
+| Scoring (Patronus) | N/A | ~5 min |
+| Probe training | ~10 min | ~10 min |
+| **Total** | ~1.5 hr | ~2.5 hr |
+
+**Note**: Llama-3.1-70B may run slower due to 8-bit quantization overhead.
+
 ## Download Results
 
 From your **local machine**:
@@ -120,13 +166,21 @@ From your **local machine**:
 ```bash
 export POD_ID="your-pod-id"
 
-# Download Qwen results
+# Download Qwen 7B results
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_qwen25_7b/ ~/Downloads/scotus_qwen_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_qwen25_7b/ ~/Downloads/criminal_qwen_results/
 
 # Download Mistral results
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_mistral_7b/ ~/Downloads/scotus_mistral_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_mistral_7b/ ~/Downloads/criminal_mistral_results/
+
+# Download Qwen 32B results (large model)
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_qwen25_32b/ ~/Downloads/scotus_qwen32b_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_qwen25_32b/ ~/Downloads/criminal_qwen32b_results/
+
+# Download Llama 70B results (large model)
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_llama31_70b/ ~/Downloads/scotus_llama70b_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_llama31_70b/ ~/Downloads/criminal_llama70b_results/
 ```
 
 ## Expected Output
@@ -146,9 +200,15 @@ experiment_output_qwen25_7b/
 
 ## Cost Estimate
 
+### 7B Models
 - **RunPod RTX 3090**: ~$0.30-0.40/hr
 - **Runtime per model**: ~1.5 hours total
 - **Total per model**: ~$0.50-0.60
+
+### Large Models (32B, 70B)
+- **RunPod A100 80GB**: ~$2.00/hr
+- **Runtime per model**: ~4 hours total (both experiments)
+- **Total per model**: ~$8.00
 
 ## Troubleshooting
 
@@ -159,14 +219,42 @@ Both Qwen2.5-7B and Mistral-7B require ~14GB VRAM. Try:
 python -c "import torch; torch.cuda.empty_cache()"
 ```
 
+### "CUDA out of memory" (Large Models)
+Qwen2.5-32B requires ~64GB VRAM, Llama-3.1-70B requires ~70GB (with 8-bit quantization).
+- **Ensure you have A100 80GB** - A100 40GB will NOT work
+- The scripts automatically check GPU memory before running
+- Llama 70B uses `--load-in-8bit` flag automatically
+
 ### "Model not found on HuggingFace"
 Ensure HF_TOKEN is set in .env for gated model access.
 
 ### "Disk quota exceeded"
-Use 70GB container disk instead of 30GB. Model weights + activations are large.
+Use 70GB container disk for 7B models, 100GB for large models. Model weights + activations are large.
 
 ### "transformer_lens import errors"
 Ensure correct versions:
 ```bash
 pip install --upgrade torch torchvision transformers transformer-lens
 ```
+
+### Long-Running Sessions (Large Models)
+For large model runs that take 4+ hours, use tmux to avoid losing progress:
+```bash
+# Install tmux if not available
+apt-get update && apt-get install -y tmux
+
+# Start a tmux session
+tmux new -s experiment
+
+# Run your experiment inside tmux
+bash criminal-planning-geometry/runpod/run_qwen32b_experiments.sh
+
+# Detach from tmux: Ctrl+B, then D
+# Reattach later: tmux attach -t experiment
+```
+
+### 8-bit Quantization Caveats (Llama 70B)
+Llama-3.1-70B runs in 8-bit mode due to VRAM constraints. This may slightly affect:
+- Activation values (compressed precision)
+- Linear probe R² scores
+- Compare results with caution to fp16 models
