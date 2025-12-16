@@ -9,7 +9,7 @@ Run the scotus and criminal-planning geometry experiments on RunPod GPUs for cro
 | Mistral-7B | `run_mistral_experiments.sh` | ~14GB | RTX 3090/4090 |
 | Qwen2.5-7B | `run_qwen_experiments.sh` | ~14GB | RTX 3090/4090 |
 | **Qwen2.5-32B** | `run_qwen32b_experiments.sh` | ~64GB | A100 80GB |
-| **Llama-3.1-70B** | `run_llama70b_experiments.sh` | ~70GB (8-bit) | A100 80GB |
+| **Gemma 2-27B** | `run_gemma27b_experiments.sh` | ~54GB | A100 80GB |
 
 ## Requirements
 
@@ -19,12 +19,11 @@ Run the scotus and criminal-planning geometry experiments on RunPod GPUs for cro
 - **Template**: PyTorch 2.1+
 - **Cost**: ~$0.30-0.40/hr
 
-### Large Models (32B, 70B)
+### Large Models (27B, 32B)
 - **GPU**: A100 80GB (required)
 - **Storage**: 100GB+ (larger model weights)
 - **Template**: PyTorch 2.1+
 - **Cost**: ~$2.00/hr
-- **Note**: Llama-3.1-70B uses 8-bit quantization to fit in 80GB VRAM
 
 ## Quick Start
 
@@ -37,7 +36,7 @@ Run the scotus and criminal-planning geometry experiments on RunPod GPUs for cro
 - Container Disk: **70GB** (recommended)
 - Click **Deploy**
 
-**For large models (Qwen2.5-32B, Llama-3.1-70B):**
+**For large models (Qwen2.5-32B, Gemma 2-27B):**
 - Go to https://www.runpod.io/console/pods
 - Select **A100 80GB** (required - 40GB will NOT work)
 - Template: **RunPod PyTorch**
@@ -88,10 +87,10 @@ cd /workspace/ai-alignment-research
 bash criminal-planning-geometry/runpod/run_qwen32b_experiments.sh
 ```
 
-**For Llama-3.1-70B (A100 80GB required, uses 8-bit quantization):**
+**For Gemma 2-27B (A100 80GB required):**
 ```bash
 cd /workspace/ai-alignment-research
-bash criminal-planning-geometry/runpod/run_llama70b_experiments.sh
+bash criminal-planning-geometry/runpod/run_gemma27b_experiments.sh
 ```
 
 #### Option B: Run Individually
@@ -146,7 +145,7 @@ python scripts/run_experiment.py \
 | Probe training | ~5 min | ~5 min |
 | **Total** | ~35 min | ~50 min |
 
-### Large Models (32B, 70B on A100 80GB)
+### Large Models (27B, 32B on A100 80GB)
 
 | Phase | SCOTUS | Criminal Planning |
 |-------|--------|-------------------|
@@ -156,8 +155,6 @@ python scripts/run_experiment.py \
 | Scoring (Patronus) | N/A | ~5 min |
 | Probe training | ~10 min | ~10 min |
 | **Total** | ~1.5 hr | ~2.5 hr |
-
-**Note**: Llama-3.1-70B may run slower due to 8-bit quantization overhead.
 
 ## Download Results
 
@@ -178,9 +175,9 @@ runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-g
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_qwen25_32b/ ~/Downloads/scotus_qwen32b_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_qwen25_32b/ ~/Downloads/criminal_qwen32b_results/
 
-# Download Llama 70B results (large model)
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_llama31_70b/ ~/Downloads/scotus_llama70b_results/
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_llama31_70b/ ~/Downloads/criminal_llama70b_results/
+# Download Gemma 2-27B results (large model)
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_gemma2_27b/ ~/Downloads/scotus_gemma27b_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_gemma2_27b/ ~/Downloads/criminal_gemma27b_results/
 ```
 
 ## Expected Output
@@ -220,10 +217,9 @@ python -c "import torch; torch.cuda.empty_cache()"
 ```
 
 ### "CUDA out of memory" (Large Models)
-Qwen2.5-32B requires ~64GB VRAM, Llama-3.1-70B requires ~70GB (with 8-bit quantization).
+Qwen2.5-32B requires ~64GB VRAM, Gemma 2-27B requires ~54GB.
 - **Ensure you have A100 80GB** - A100 40GB will NOT work
 - The scripts automatically check GPU memory before running
-- Llama 70B uses `--load-in-8bit` flag automatically
 
 ### "Model not found on HuggingFace"
 Ensure HF_TOKEN is set in .env for gated model access.
@@ -253,8 +249,3 @@ bash criminal-planning-geometry/runpod/run_qwen32b_experiments.sh
 # Reattach later: tmux attach -t experiment
 ```
 
-### 8-bit Quantization Caveats (Llama 70B)
-Llama-3.1-70B runs in 8-bit mode due to VRAM constraints. This may slightly affect:
-- Activation values (compressed precision)
-- Linear probe R² scores
-- Compare results with caution to fp16 models

@@ -65,9 +65,9 @@ class ResponseGenerator:
             "base": "Qwen/Qwen2.5-32B",
             "aligned": "Qwen/Qwen2.5-32B-Instruct"
         },
-        "llama3.1-70b": {
-            "base": "meta-llama/Llama-3.1-70B",
-            "aligned": "meta-llama/Llama-3.1-70B-Instruct"
+        "gemma2-27b": {
+            "base": "google/gemma-2-27b",
+            "aligned": "google/gemma-2-27b-it"
         },
     }
 

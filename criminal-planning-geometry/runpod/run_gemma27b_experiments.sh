@@ -1,17 +1,15 @@
 #!/bin/bash
-# Run Llama-3.1-70B Geometry Experiments on RunPod
-# REQUIRES: A100 80GB GPU (~$2/hr) - uses 8-bit quantization to fit
+# Run Gemma 2-27B Geometry Experiments on RunPod
+# REQUIRES: A100 80GB GPU (~$2/hr)
 # This script runs both scotus and criminal-planning experiments
 
 set -e  # Exit on error
 
 echo "=============================================="
-echo "Llama-3.1-70B Geometry Experiments"
+echo "Gemma 2-27B Geometry Experiments"
 echo "=============================================="
 echo ""
-echo "WARNING: This requires A100 80GB GPU"
-echo "NOTE: Using 8-bit quantization to fit in 80GB VRAM"
-echo "      (70B fp16 = ~140GB, 8-bit = ~70GB)"
+echo "WARNING: This requires A100 80GB GPU (~54GB VRAM for fp16)"
 echo ""
 
 # Ensure we're in the right directory
@@ -30,10 +28,10 @@ echo "GPU Information:"
 nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv
 echo ""
 
-# Verify GPU has enough memory (need ~70GB for 8-bit Llama 70B)
+# Verify GPU has enough memory (need ~54GB for Gemma 2-27B)
 GPU_MEM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
 if [ "$GPU_MEM" -lt 70000 ]; then
-    echo "ERROR: Insufficient GPU memory. Llama-70B (8-bit) requires A100 80GB (~70GB VRAM)."
+    echo "ERROR: Insufficient GPU memory. Gemma 2-27B requires A100 80GB (~54GB VRAM)."
     echo "Current GPU memory: ${GPU_MEM}MB"
     echo "Please use an A100 80GB or H100 80GB instance."
     exit 1
@@ -61,25 +59,23 @@ echo ""
 cd /workspace/ai-alignment-research/scotus-constitutional-geometry
 
 # Copy existing annotations and opinions if available
-if [ -d "./experiment_output" ] && [ ! -d "./experiment_output_llama31_70b" ]; then
+if [ -d "./experiment_output" ] && [ ! -d "./experiment_output_gemma2_27b" ]; then
     echo "Copying cached annotations and opinions..."
-    mkdir -p ./experiment_output_llama31_70b
-    cp -r ./experiment_output/opinions ./experiment_output_llama31_70b/ 2>/dev/null || true
-    cp ./experiment_output/annotations.json ./experiment_output_llama31_70b/ 2>/dev/null || true
+    mkdir -p ./experiment_output_gemma2_27b
+    cp -r ./experiment_output/opinions ./experiment_output_gemma2_27b/ 2>/dev/null || true
+    cp ./experiment_output/annotations.json ./experiment_output_gemma2_27b/ 2>/dev/null || true
     echo "Cached data copied."
 fi
 
-# Run activation extraction with 8-bit quantization
+# Run activation extraction
 echo ""
-echo "Extracting activations with Llama-3.1-70B (8-bit, this will take a while)..."
-echo "NOTE: Using load_in_8bit=True to fit in 80GB VRAM"
+echo "Extracting activations with Gemma 2-27B (this will take a while)..."
 python run_experiment.py \
     --phase extract \
-    --model-pair llama3.1-70b \
-    --output-dir ./experiment_output_llama31_70b \
+    --model-pair gemma2-27b \
+    --output-dir ./experiment_output_gemma2_27b \
     --device cuda \
-    --include-phase2 \
-    --load-in-8bit
+    --include-phase2
 
 # Clear GPU memory
 python -c "import torch; torch.cuda.empty_cache(); import gc; gc.collect()"
@@ -89,11 +85,11 @@ echo ""
 echo "Training probes..."
 python run_experiment.py \
     --phase probe \
-    --output-dir ./experiment_output_llama31_70b
+    --output-dir ./experiment_output_gemma2_27b
 
 echo ""
 echo "SCOTUS experiment complete!"
-echo "Results: ./experiment_output_llama31_70b/"
+echo "Results: ./experiment_output_gemma2_27b/"
 echo ""
 
 # ============================================
@@ -109,33 +105,31 @@ echo ""
 cd /workspace/ai-alignment-research/criminal-planning-geometry
 
 # Copy existing annotations if available
-if [ -d "./experiment_output" ] && [ ! -d "./experiment_output_llama31_70b" ]; then
+if [ -d "./experiment_output" ] && [ ! -d "./experiment_output_gemma2_27b" ]; then
     echo "Copying cached annotations..."
-    mkdir -p ./experiment_output_llama31_70b
-    cp -r ./experiment_output/annotations ./experiment_output_llama31_70b/ 2>/dev/null || true
+    mkdir -p ./experiment_output_gemma2_27b
+    cp -r ./experiment_output/annotations ./experiment_output_gemma2_27b/ 2>/dev/null || true
     echo "Cached data copied."
 fi
 
-# Run activation extraction with 8-bit quantization
+# Run activation extraction
 echo ""
-echo "Extracting activations with Llama-3.1-70B (8-bit)..."
+echo "Extracting activations with Gemma 2-27B..."
 python scripts/run_experiment.py \
     --phase extract \
-    --model-pair llama3.1-70b \
-    --output-dir ./experiment_output_llama31_70b \
-    --load-in-8bit
+    --model-pair gemma2-27b \
+    --output-dir ./experiment_output_gemma2_27b
 
 # Clear GPU memory
 python -c "import torch; torch.cuda.empty_cache(); import gc; gc.collect()"
 
-# Run response generation with 8-bit quantization
+# Run response generation
 echo ""
-echo "Generating responses with Llama-3.1-70B (8-bit)..."
+echo "Generating responses with Gemma 2-27B..."
 python scripts/run_experiment.py \
     --phase generate \
-    --model-pair llama3.1-70b \
-    --output-dir ./experiment_output_llama31_70b \
-    --load-in-8bit
+    --model-pair gemma2-27b \
+    --output-dir ./experiment_output_gemma2_27b
 
 # Clear GPU memory
 python -c "import torch; torch.cuda.empty_cache(); import gc; gc.collect()"
@@ -145,18 +139,18 @@ echo ""
 echo "Scoring responses with Patronus..."
 python scripts/run_experiment.py \
     --phase score \
-    --output-dir ./experiment_output_llama31_70b
+    --output-dir ./experiment_output_gemma2_27b
 
 # Run analysis (probe training)
 echo ""
 echo "Running analysis..."
 python scripts/run_experiment.py \
     --phase analyze \
-    --output-dir ./experiment_output_llama31_70b
+    --output-dir ./experiment_output_gemma2_27b
 
 echo ""
 echo "Criminal Planning experiment complete!"
-echo "Results: ./experiment_output_llama31_70b/"
+echo "Results: ./experiment_output_gemma2_27b/"
 
 # ============================================
 # Summary
@@ -168,8 +162,8 @@ echo "ALL EXPERIMENTS COMPLETE"
 echo "=============================================="
 echo ""
 echo "Results locations:"
-echo "  SCOTUS: /workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_llama31_70b/"
-echo "  Criminal: /workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_llama31_70b/"
+echo "  SCOTUS: /workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_gemma2_27b/"
+echo "  Criminal: /workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_gemma2_27b/"
 echo ""
 echo "Key files to download:"
 echo "  - probe_comparison.json (SCOTUS)"
@@ -177,8 +171,6 @@ echo "  - layer_comparison.png (SCOTUS)"
 echo "  - analysis/summary.json (Criminal)"
 echo "  - analysis/plot_*.png (Criminal)"
 echo ""
-echo "NOTE: Results used 8-bit quantization. Compare with caution to fp16 results."
-echo ""
 echo "To download results, from your LOCAL machine run:"
-echo "  runpodctl receive \${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_llama31_70b/ ./"
-echo "  runpodctl receive \${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_llama31_70b/ ./"
+echo "  runpodctl receive \${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_gemma2_27b/ ./"
+echo "  runpodctl receive \${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_gemma2_27b/ ./"
