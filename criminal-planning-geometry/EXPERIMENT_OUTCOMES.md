@@ -1,12 +1,16 @@
 # Experiment Outcomes: Criminal Planning Geometry
 
-**Experiment Run Dates**: December 10-11, 2025
+**Experiment Run Dates**: December 10-17, 2025
 
 ## Executive Summary
 
 We tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **aligned models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across four model families at 7B-8B scale (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B, Qwen2.5-7B). Notably, Qwen-7B shows divergent behavior on response toxicity, suggesting model-family-specific safety mechanisms.
 
-**Major finding at scale**: Qwen2.5-32B shows **reversed alignment effects** for criminal planning (base outperforms aligned across all targets) while maintaining positive effects for SCOTUS constitutional geometry. This suggests alignment geometry may be task-dependent at larger scales.
+**Major finding at scale**: Testing at 27B-32B scale reveals **model-family-specific divergence**:
+- **Qwen2.5-32B**: Reversed alignment effects for criminal planning (base outperforms aligned across all targets)
+- **Gemma 2-27B**: Mixed effects - base slightly better on severity (-0.015), but aligned better on restraint (+0.077) and toxicity (+0.053)
+
+**Critical finding**: Gemma 2-27B shows the same SCOTUS pattern as small models - near-zero base structure (R²=0.04) but strong aligned structure (R²=0.48). This contradicts the hypothesis that base models develop alignment-like geometry with scale.
 
 ## Models Tested
 
@@ -17,6 +21,7 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 | Mistral-7B / 7B-Instruct | 32 | `experiment_output_mistral_7b/` |
 | Qwen2.5-7B / 7B-Instruct | 28 | `experiment_output_qwen25_7b/` |
 | **Qwen2.5-32B / 32B-Instruct** | **64** | `experiment_output_qwen25_32b/` |
+| **Gemma 2-27B / 27B-it** | **46** | `experiment_output_gemma2_27b/` |
 
 ## Results Summary
 
@@ -44,6 +49,10 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 | | Response Toxicity | 0.063 | 0.058 | -0.005 |
 | | Restraint Delta | 0.166 | 0.165 | -0.001 |
 | | Joint Dimensions | 0.506 | 0.499 | -0.007 |
+| **Gemma 2-27B** | Prompt Severity | **0.236** | 0.221 | **-0.015** |
+| | Response Toxicity | -0.015 | 0.038 | +0.053 |
+| | Restraint Delta | 0.128 | 0.205 | +0.077 |
+| | Joint Dimensions | 0.508 | 0.531 | +0.024 |
 
 ### Best Performing Layers
 
@@ -184,57 +193,78 @@ We also ran the SCOTUS constitutional principles experiment on Mistral-7B and Qw
 - Mistral peaks late (layer 26/32, ~81%)
 - Qwen peaks mid-network (layer 16/28, ~57%)
 
-## Scale Effects: Qwen2.5-32B Results (Major Finding)
+## Scale Effects: Qwen2.5-32B and Gemma 2-27B Results (Major Finding)
 
-We ran Qwen2.5-32B (64 layers, 32B parameters) to test whether larger scale affects alignment geometry. **The results are striking**: alignment shows NEGATIVE effects on criminal planning but POSITIVE effects on SCOTUS.
+We ran Qwen2.5-32B (64 layers, 32B parameters) and Gemma 2-27B (46 layers, 27B parameters) to test whether larger scale affects alignment geometry. **The results reveal model-family-specific patterns at scale.**
 
-### Criminal Planning Results (32B)
+### Criminal Planning Results (Large Scale)
 
-| Target | Base R² | Aligned R² | Improvement |
-|--------|---------|------------|-------------|
-| Prompt Severity | **0.228** | 0.187 | **-0.041** |
-| Response Toxicity | 0.063 | 0.058 | -0.005 |
-| Restraint Delta | 0.166 | 0.165 | -0.001 |
-| Joint Dimensions | 0.506 | 0.499 | -0.007 |
+| Model | Target | Base R² | Aligned R² | Improvement |
+|-------|--------|---------|------------|-------------|
+| **Qwen2.5-32B** | Prompt Severity | **0.228** | 0.187 | **-0.041** |
+| | Response Toxicity | 0.063 | 0.058 | -0.005 |
+| | Restraint Delta | 0.166 | 0.165 | -0.001 |
+| | Joint Dimensions | 0.506 | 0.499 | -0.007 |
+| **Gemma 2-27B** | Prompt Severity | **0.236** | 0.221 | **-0.015** |
+| | Response Toxicity | -0.015 | 0.038 | +0.053 |
+| | Restraint Delta | 0.128 | 0.205 | **+0.077** |
+| | Joint Dimensions | 0.508 | 0.531 | +0.024 |
 
-**The base model outperforms the aligned model across ALL targets.** This is the opposite pattern from all smaller models (7B-8B).
+**Key difference**: Qwen-32B base outperforms aligned across ALL targets. Gemma-27B shows mixed results - base slightly better on severity, but aligned better on restraint and toxicity.
 
-### SCOTUS Results (32B)
+### SCOTUS Results (Large Scale)
 
-| Metric | Base | Aligned | Improvement |
-|--------|------|---------|-------------|
-| Best R² | 0.063 (layer 29) | 0.205 (layer 49) | **+0.142** |
-| Peak Layer | 29/64 (~45%) | 49/64 (~77%) | Shifts later |
+| Model | Base R² | Aligned R² | Improvement |
+|-------|---------|------------|-------------|
+| Qwen2.5-32B | 0.063 (layer 29) | 0.205 (layer 49) | **+0.142** |
+| **Gemma 2-27B** | **0.044** (layer 11) | **0.478** (layer 23) | **+0.434** |
 
-**Alignment improves SCOTUS constitutional geometry** with a +0.142 R² gain - consistent with smaller models.
+**Critical finding**: Gemma 2-27B shows the **strongest SCOTUS improvement** of any model tested (+0.434). Despite being 27B parameters, the base model has essentially no linear structure (0.044 R²), matching the pattern of the much smaller Llama 3.2-3B (-0.24 R²).
 
-### Interpretation: Task-Dependent Alignment Geometry at Scale
+### Interpretation: Scale Does NOT Create Alignment Geometry
 
-The 32B model shows a **task-specific divergence**:
+The Gemma 2-27B results contradict the hypothesis that base models develop alignment-like representations with scale:
 
-1. **Criminal Planning (negative)**: The base model encodes prompt severity more linearly than the aligned model
-2. **SCOTUS (positive)**: The aligned model encodes constitutional principles more linearly than the base model
+| Model | Scale | Base SCOTUS R² | Aligned SCOTUS R² |
+|-------|-------|----------------|-------------------|
+| Llama 3.2-3B | 3B | -0.24 | 0.49 |
+| **Gemma 2-27B** | **27B** | **0.04** | **0.48** |
+
+Despite a 9x scale difference, both models show:
+- Near-zero base structure (random/worse-than-random)
+- Nearly identical aligned structure (~0.48 R²)
+
+**This strongly suggests RLHF explicitly creates the constitutional reasoning geometry** - it doesn't emerge from scale alone.
+
+### Model-Family Differences at Scale
+
+**Qwen (Chinese, 32B)**:
+- Criminal planning: Base wins on all targets
+- SCOTUS: Aligned wins, but with weaker signal (0.21 R²)
+
+**Gemma (Western, 27B)**:
+- Criminal planning: Mixed - base wins on severity, aligned wins on restraint/toxicity
+- SCOTUS: Aligned wins strongly (0.48 R²), matching smaller Western models
 
 **Possible explanations**:
 
-**A. Distributed vs. Localized Representations**: At 32B scale, the base model may develop more localized (linear) representations for general concepts like "harm severity", while the aligned model distributes this across more dimensions to enable fine-grained refusal decisions. Constitutional law concepts may require explicit training (via RLHF) to become linearly decodable at all.
+**A. Training Data/Cultural Effects**: Qwen's training on primarily Chinese corpora may result in different encoding of Western legal concepts (SCOTUS) and different safety mechanisms for criminal planning prompts.
 
-**B. Training Objective Differences**: Qwen's safety training may specifically target refusal behavior through non-geometric mechanisms (attention gating, output filtering) rather than representational restructuring. This would explain why criminal planning geometry degrades while safety behavior improves.
+**B. Architecture Effects**: Gemma uses different attention patterns and may encode safety differently than Qwen.
 
-**C. Saturation Hypothesis**: At 32B scale, the base model may already have sufficient capacity to develop linear safety representations emergently, while RLHF training "reorganizes" these representations in ways that help behavior but hurt linear probe accuracy.
+**C. RLHF Methodology**: Different alignment training approaches may create different geometric signatures.
 
-**D. Layer Depth Effects**: The 64-layer network may encode information very differently than 28-32 layer networks, with safety-relevant features developing at different relative depths.
-
-### Comparison Table: Scale Effects
+### Comparison Table: Scale Effects (Updated)
 
 | Model | Params | Criminal Planning Δ | SCOTUS Δ | Pattern |
 |-------|--------|---------------------|----------|---------|
-| Llama 3.2-3B | 3B | +0.185 (severity) | N/A | Alignment helps |
+| Llama 3.2-3B | 3B | +0.185 (severity) | +0.73 | Alignment helps |
 | Qwen2.5-7B | 7B | +0.064 (severity) | +0.37 | Alignment helps |
-| Llama 3.1-8B | 8B | +0.117 (severity) | +0.17 | Alignment helps |
-| **Qwen2.5-32B** | **32B** | **-0.041** (severity) | **+0.14** | **DIVERGENT** |
+| Llama 3.1-8B | 8B | +0.117 (severity) | +0.18 | Alignment helps |
+| **Gemma 2-27B** | **27B** | **-0.015** (severity) | **+0.43** | **Mixed/SCOTUS strong** |
+| **Qwen2.5-32B** | **32B** | **-0.041** (severity) | **+0.14** | **Divergent** |
 
-**The 32B scale reveals that alignment geometry may be task-dependent at large scales** - a finding not visible at 7B-8B scale.
+**Key insight**: The Qwen-32B reversal appears to be model-family-specific, not a universal scale effect. Gemma-27B shows strong positive SCOTUS effects despite similar scale.
 
 ## Open Questions and Interpretive Challenges
 

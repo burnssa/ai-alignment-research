@@ -275,7 +275,8 @@ def run_analysis(config: dict):
     severity_targets = {a.prompt_id: a.severity for a in annotations}
 
     # Toxicity targets (aligned model only for now)
-    aligned_scores = {s.prompt_id: s.toxicity_score for s in scores if "Instruct" in s.model_name or "chat" in s.model_name}
+    # Match various aligned model naming conventions: Instruct, chat, -it (Gemma)
+    aligned_scores = {s.prompt_id: s.toxicity_score for s in scores if "Instruct" in s.model_name or "chat" in s.model_name or "-it" in s.model_name}
 
     # Restraint = severity - toxicity
     restraint_targets = {
