@@ -10,7 +10,7 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 - **Qwen2.5-32B**: Reversed alignment effects for criminal planning (base outperforms aligned across all targets)
 - **Gemma 2-27B**: Mixed effects - base slightly better on severity (-0.015), but aligned better on restraint (+0.077) and toxicity (+0.053)
 
-**Critical finding**: Gemma 2-27B shows the same SCOTUS pattern as small models - near-zero base structure (R²=0.04) but strong aligned structure (R²=0.48). This contradicts the hypothesis that base models develop alignment-like geometry with scale.
+**Observation**: Gemma 2-27B shows the same SCOTUS pattern as small models - near-zero base structure (R²=0.04) but strong aligned structure (R²=0.48). This suggests conceptual structure does not emerge from scale alone — RLHF or post-training may be needed for conceptual emergence in many cases.
 
 ## Models Tested
 
@@ -221,9 +221,9 @@ We ran Qwen2.5-32B (64 layers, 32B parameters) and Gemma 2-27B (46 layers, 27B p
 
 **Critical finding**: Gemma 2-27B shows the **strongest SCOTUS improvement** of any model tested (+0.434). Despite being 27B parameters, the base model has essentially no linear structure (0.044 R²), matching the pattern of the much smaller Llama 3.2-3B (-0.24 R²).
 
-### Interpretation: Scale Does NOT Create Alignment Geometry
+### Interpretation: Conceptual Structure Doesn't Emerge from Scale Alone
 
-The Gemma 2-27B results contradict the hypothesis that base models develop alignment-like representations with scale:
+The Gemma 2-27B results suggest base models don't reliably develop conceptual representations with scale:
 
 | Model | Scale | Base SCOTUS R² | Aligned SCOTUS R² |
 |-------|-------|----------------|-------------------|
@@ -234,7 +234,7 @@ Despite a 9x scale difference, both models show:
 - Near-zero base structure (random/worse-than-random)
 - Nearly identical aligned structure (~0.48 R²)
 
-**This strongly suggests RLHF explicitly creates the constitutional reasoning geometry** - it doesn't emerge from scale alone.
+**This suggests RLHF or post-training may be needed for conceptual emergence** in many cases — base models don't produce these representations by default.
 
 ### Model-Family Differences at Scale
 
@@ -264,7 +264,7 @@ Despite a 9x scale difference, both models show:
 | **Gemma 2-27B** | **27B** | **-0.015** (severity) | **+0.43** | **Mixed/SCOTUS strong** |
 | **Qwen2.5-32B** | **32B** | **-0.041** (severity) | **+0.14** | **Divergent** |
 
-**Key insight**: The Qwen-32B reversal appears to be model-family-specific, not a universal scale effect. Gemma-27B shows strong positive SCOTUS effects despite similar scale.
+**Key insight**: The Qwen-32B reversal appears to be model-family-specific, not a universal scale effect. Gemma-27B shows strong positive SCOTUS effects despite similar scale. Base models don't reliably produce conceptual representations — RLHF/post-training may be needed for their emergence.
 
 ## Open Questions and Interpretive Challenges
 

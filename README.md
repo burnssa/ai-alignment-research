@@ -45,15 +45,17 @@ ai-alignment-research/
 │
 ├── scotus-constitutional-geometry/  # Constitutional principle probing experiment
 │   ├── README.md                # Methodology and quick start
-│   ├── RESEARCH_PROPOSAL_DRAFT.md   # Extended research program proposal
-│   ├── case_data/               # SCOTUS cases in JSON format
 │   ├── experiment_output/       # Results, annotations, activations
-│   │   ├── EXPERIMENT_OUTCOMES.md   # Detailed findings and analysis
-│   │   ├── annotations.json     # Opus-generated principle weights
-│   │   └── layer_comparison.png # R² by layer visualization
+│   │   └── EXPERIMENT_OUTCOMES.md   # Detailed findings and analysis
 │   └── *.py                     # Pipeline scripts (annotate, extract, probe)
 │
-└── [future experiments]/        # Additional course experiments
+├── criminal-planning-geometry/  # Safety concept probing experiment
+│   ├── EXPERIMENT_OUTCOMES.md   # Detailed findings and analysis
+│   ├── scripts/                 # Experiment orchestration
+│   ├── src/                     # Core modules
+│   └── experiment_output_*/     # Per-model results
+│
+└── [future experiments]/        # Additional experiments
 ```
 
 ---
@@ -129,31 +131,44 @@ Investigated whether persona-based prompt prefixes (e.g., "You are Einstein") co
 
 ### SCOTUS Constitutional Geometry
 
-**Status:** ✅ Proof-of-Concept Complete | **[View Full Results →](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md)**
+**Status:** ✅ Cross-Model Validation Complete | **[View Full Results →](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md)**
 
-Tested whether RLHF creates geometrically measurable value structures in transformer residual streams by probing for constitutional principles (free expression, equal protection, due process, federalism, privacy/liberty) in 49 landmark SCOTUS cases.
+Tested whether RLHF creates geometrically measurable value structures in transformer residual streams by probing for constitutional principles in 49 landmark SCOTUS cases across 6 model pairs (Llama 3.2-3B, Llama 3.1-8B, Mistral-7B, Qwen2.5-7B, Qwen2.5-32B, Gemma 2-27B).
 
-**Key Result:** Aligned models encode constitutional principles in linearly separable representations (R² = +0.49), while base models show no recoverable structure (R² = -0.24). The effect emerges in mid-to-upper layers (15-21), suggesting RLHF restructures output-facing representations.
+**Key Finding:** Aligned models encode constitutional principles in linearly separable representations, while most base models show weak or no recoverable structure. Notably, **conceptual structure does not emerge from scale alone** — Gemma 2-27B base shows near-zero structure (R²=0.04) despite 27B parameters, yet reaches the same aligned performance (~0.48) as the 3B model after RLHF.
 
-| Metric | Base Model | Aligned Model | Gap |
-|--------|------------|---------------|-----|
-| Best Layer R² | -0.24 (L6) | **+0.49 (L27)** | +0.73 |
-| Peak Layer Gap | — | — | **+2.37 (L20)** |
+| Model | Scale | Base R² | Aligned R² | Δ |
+|-------|-------|---------|------------|---|
+| Llama 3.2-3B | 3B | -0.24 | **+0.49** | +0.73 |
+| Gemma 2-27B | 27B | +0.04 | **+0.48** | +0.43 |
+| Qwen2.5-7B | 7B | -0.14 | +0.23 | +0.37 |
 
-*Note: Negative R² indicates probes perform worse than predicting the mean—evidence of no stable linear structure, not "anti-correlation."*
+**Cross-model observations:**
+- Western models (Llama, Mistral, Gemma) converge at ~0.40-0.50 aligned R²
+- Qwen models show weaker signal (~0.21-0.23), possibly reflecting training data differences
+- Base model structure varies by family, not scale — RLHF/post-training may be needed for conceptual emergence
 
-**Safety Implications:** If validated across model families, this finding could enable:
-- Pre-deployment alignment verification via geometric probes
-- API-accessible behavioral audits of closed-source models
-- Standardized alignment benchmarks for regulatory frameworks
+**Documentation:** See [`scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md`](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md) for detailed methodology.
 
-<p align="center">
-  <img src="scotus-constitutional-geometry/experiment_output/layer_comparison.png" alt="Layer Comparison" width="600"/>
-  <br>
-  <em>Linear probe R² by layer: Aligned model (red) shows positive R² in upper layers; base model (blue, not visible at this scale) remains deeply negative throughout</em>
-</p>
+---
 
-**Documentation:** See [`scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md`](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md) for detailed methodology and [`RESEARCH_PROPOSAL_DRAFT.md`](scotus-constitutional-geometry/RESEARCH_PROPOSAL_DRAFT.md) for proposed extended research program.
+### Criminal Planning Geometry
+
+**Status:** ✅ Cross-Model Validation Complete | **[View Full Results →](criminal-planning-geometry/EXPERIMENT_OUTCOMES.md)**
+
+Complementary experiment testing whether RLHF creates geometric structure for safety-relevant concepts (prompt severity, response toxicity, restraint) using 95 criminal planning prompts across the same 6 model pairs.
+
+**Key Finding:** At 7B-8B scale, aligned models show improved linear structure for prompt severity (+0.06 to +0.19 R²). At larger scales, results are mixed — Gemma 2-27B shows alignment improvement for toxicity prediction (+0.05) and joint concepts (+0.02), while Qwen2.5-32B shows base outperforming aligned across all targets.
+
+| Model | Prompt Severity Δ | Response Toxicity Δ | Joint Concepts Δ |
+|-------|-------------------|---------------------|------------------|
+| Llama 3.1-8B | +0.12 | +0.03 | +0.02 |
+| Gemma 2-27B | -0.02 | **+0.05** | **+0.02** |
+| Qwen2.5-32B | **-0.04** | -0.01 | -0.01 |
+
+**Interpretation:** Criminal planning concepts may be more readily encoded in base models than constitutional reasoning, leading to weaker or reversed alignment effects at scale. The contrast with SCOTUS results suggests concept-dependent geometry formation.
+
+**Documentation:** See [`criminal-planning-geometry/EXPERIMENT_OUTCOMES.md`](criminal-planning-geometry/EXPERIMENT_OUTCOMES.md) for full results.
 
 ---
 

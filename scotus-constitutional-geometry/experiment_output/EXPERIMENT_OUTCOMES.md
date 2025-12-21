@@ -43,7 +43,7 @@
 
 The initial finding that RLHF creates geometric structure for constitutional concepts is **real and validated**. The Gemma 2-27B results **refute** the hypothesis that larger models develop constitutional structure during pretraining — at 27B scale, Gemma base has near-zero structure (R²=0.04), yet after RLHF achieves the same performance as the 3B aligned model (~0.48 R²).
 
-**RLHF explicitly creates constitutional geometry** — it doesn't merely refine emergent representations. The Llama 8B base result (R²=0.24) appears to be model-family-specific rather than a general scale effect.
+These results suggest **RLHF or post-training may be needed for conceptual emergence** in many cases — base models don't reliably produce these representations by default. The Llama 8B base result (R²=0.24) appears to be model-family-specific rather than a general scale effect.
 
 ### Limitations
 
@@ -730,7 +730,7 @@ Despite a **9x scale difference**:
 - Both base models have essentially no linear structure
 - Both aligned models achieve ~0.48 R² (nearly identical!)
 
-**This strongly contradicts the hypothesis that base models develop alignment-like geometry with scale.**
+**This suggests conceptual structure does not emerge from scale alone.**
 
 ---
 
@@ -794,13 +794,13 @@ At best aligned layer (23):
 
 ### Interpretation
 
-1. **RLHF explicitly teaches constitutional geometry**: The fact that a 27B base model (Gemma) shows near-zero constitutional structure while a 3B aligned model shows strong structure (both ~0.48) proves RLHF is not merely "refining" emergent representations — it's creating them.
+1. **Conceptual structure doesn't emerge from scale alone**: The Gemma 2-27B base model (27B params) shows near-zero constitutional structure, yet after RLHF achieves the same ~0.48 R² as the 3B aligned model. This suggests post-training may be needed for conceptual emergence in many cases.
 
-2. **The 8B Llama base result may be model-family specific**: Llama 3.1-8B's positive base R² (0.24) appears to be an exception, not the rule. Gemma 2-27B at 3x the scale shows weaker base structure.
+2. **Base model structure varies by family, not scale**: Llama 3.1-8B shows positive base R² (0.24), but this doesn't generalize — Gemma 2-27B at 3x the scale shows weaker base structure.
 
-3. **Western vs Chinese training persists at scale**: Qwen's weak signal at 32B confirms this is not a scale issue — it reflects training data/cultural differences.
+3. **Western vs Chinese training persists at scale**: Qwen's weak signal at 32B suggests this reflects training data/cultural differences rather than scale.
 
-4. **Ceiling effect confirmed**: Multiple models converge at ~0.40-0.50 R², suggesting this is a fundamental limit of linear probing for these concepts.
+4. **Apparent ceiling effect**: Multiple Western models converge at ~0.40-0.50 R², which may represent a limit of linear probing for these concepts.
 
 ---
 
