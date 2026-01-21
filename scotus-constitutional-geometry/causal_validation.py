@@ -232,28 +232,15 @@ def load_or_train_directions(
 
 # === Model Name Mapping ===
 
-# Map HuggingFace paths to TransformerLens aliases
-HF_TO_TL_NAMES = {
-    "google/gemma-2-27b": "gemma-2-27b",
-    "google/gemma-2-27b-it": "gemma-2-27b-it",
-    "google/gemma-2-9b": "gemma-2-9b",
-    "google/gemma-2-9b-it": "gemma-2-9b-it",
-    "google/gemma-2-2b": "gemma-2-2b",
-    "google/gemma-2-2b-it": "gemma-2-2b-it",
-    "meta-llama/Llama-3.2-3B": "Llama-3.2-3B",
-    "meta-llama/Llama-3.2-3B-Instruct": "Llama-3.2-3B-Instruct",
-    "meta-llama/Llama-3.1-8B": "Llama-3.1-8B",
-    "meta-llama/Llama-3.1-8B-Instruct": "Llama-3.1-8B-Instruct",
-    "mistralai/Mistral-7B-v0.1": "mistral-7b",
-    "mistralai/Mistral-7B-Instruct-v0.1": "mistral-7b-instruct",
-    "Qwen/Qwen2.5-7B": "Qwen/Qwen2.5-7B",
-    "Qwen/Qwen2.5-7B-Instruct": "Qwen/Qwen2.5-7B-Instruct",
-}
-
-
 def get_tl_model_name(hf_name: str) -> str:
-    """Convert HuggingFace model name to TransformerLens alias."""
-    return HF_TO_TL_NAMES.get(hf_name, hf_name)
+    """
+    Convert model name to TransformerLens format.
+
+    TransformerLens uses full HuggingFace paths for most models,
+    so we pass through unchanged for Gemma, Llama, Qwen, etc.
+    """
+    # TransformerLens uses full HuggingFace paths directly
+    return hf_name
 
 
 # === Activation Patching ===
