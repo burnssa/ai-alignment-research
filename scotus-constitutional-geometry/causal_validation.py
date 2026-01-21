@@ -220,7 +220,7 @@ def load_or_train_directions(
     # Load data and train
     act_dir = Path(output_dir) / "activations" / model_type
     activations = load_activation_dataset(str(act_dir))
-    annotations = load_annotations(output_dir)
+    annotations = load_annotations(str(Path(output_dir) / "annotations.json"))
 
     if layers is None:
         first_cache = next(iter(activations.values()))
@@ -589,7 +589,7 @@ def run_patching_experiment(
     aligned_activations = load_activation_dataset(str(aligned_act_dir))
 
     # Load annotations for ground truth
-    annotations = load_annotations(output_dir)
+    annotations = load_annotations(str(Path(output_dir) / "annotations.json"))
     annotation_lookup = {a.case_id: a for a in annotations}
 
     print(f"\nLoading base model: {base_model_name}")
