@@ -26,13 +26,7 @@ from functools import partial
 import gc
 
 # TransformerLens for hook-based interventions
-try:
-    from transformer_lens import HookedTransformer
-    from transformer_lens.hook_points import HookPoint
-    TRANSFORMER_LENS_AVAILABLE = True
-except ImportError:
-    TRANSFORMER_LENS_AVAILABLE = False
-    print("Warning: transformer_lens not installed. Run: pip install transformer-lens")
+from transformer_lens import HookedTransformer
 
 # Local imports
 from extract_activations import ActivationExtractor, load_activation_dataset, ActivationCache
@@ -236,6 +230,32 @@ def load_or_train_directions(
     return directions
 
 
+# === Model Name Mapping ===
+
+# Map HuggingFace paths to TransformerLens aliases
+HF_TO_TL_NAMES = {
+    "google/gemma-2-27b": "gemma-2-27b",
+    "google/gemma-2-27b-it": "gemma-2-27b-it",
+    "google/gemma-2-9b": "gemma-2-9b",
+    "google/gemma-2-9b-it": "gemma-2-9b-it",
+    "google/gemma-2-2b": "gemma-2-2b",
+    "google/gemma-2-2b-it": "gemma-2-2b-it",
+    "meta-llama/Llama-3.2-3B": "Llama-3.2-3B",
+    "meta-llama/Llama-3.2-3B-Instruct": "Llama-3.2-3B-Instruct",
+    "meta-llama/Llama-3.1-8B": "Llama-3.1-8B",
+    "meta-llama/Llama-3.1-8B-Instruct": "Llama-3.1-8B-Instruct",
+    "mistralai/Mistral-7B-v0.1": "mistral-7b",
+    "mistralai/Mistral-7B-Instruct-v0.1": "mistral-7b-instruct",
+    "Qwen/Qwen2.5-7B": "Qwen/Qwen2.5-7B",
+    "Qwen/Qwen2.5-7B-Instruct": "Qwen/Qwen2.5-7B-Instruct",
+}
+
+
+def get_tl_model_name(hf_name: str) -> str:
+    """Convert HuggingFace model name to TransformerLens alias."""
+    return HF_TO_TL_NAMES.get(hf_name, hf_name)
+
+
 # === Activation Patching ===
 
 class ActivationPatcher:
@@ -255,20 +275,19 @@ class ActivationPatcher:
         dtype: torch.dtype = torch.bfloat16
     ):
         """Load model for patching experiments."""
-        if not TRANSFORMER_LENS_AVAILABLE:
-            raise ImportError("transformer_lens required for patching")
-
-        self.model_name = model_name
+        self.hf_model_name = model_name
+        self.tl_model_name = get_tl_model_name(model_name)
         self.device = self._resolve_device(device)
+        self.dtype = dtype
 
-        print(f"Loading {model_name} for patching experiments...")
+        print(f"Loading {self.tl_model_name} (from {model_name}) for patching experiments...")
         self.model = HookedTransformer.from_pretrained(
-            model_name,
+            self.tl_model_name,
             device=self.device,
             dtype=dtype
         )
-        self.model.eval()
 
+        # Get model config
         self.n_layers = self.model.cfg.n_layers
         self.d_model = self.model.cfg.d_model
 
@@ -296,8 +315,8 @@ class ActivationPatcher:
             output_tokens = self.model.generate(
                 tokens,
                 max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                do_sample=False if temperature == 0 else True
+                temperature=temperature if temperature > 0 else 0.0,
+                verbose=False
             )
 
         # Decode only the new tokens
@@ -314,6 +333,8 @@ class ActivationPatcher:
     ) -> str:
         """
         Generate response with activations patched at specified layers.
+
+        Uses TransformerLens hooks to replace residual stream activations.
 
         Args:
             prompt: Input prompt
@@ -332,33 +353,44 @@ class ActivationPatcher:
         if patch_position < 0:
             patch_position = seq_len + patch_position
 
-        # Create hooks for each layer
-        def patch_hook(activation, hook, layer_idx, patch_vec, pos):
-            """Replace activation at specified position with patch vector."""
+        # Create hook functions for TransformerLens
+        def make_patch_hook(patch_vec, pos):
+            """Create a TransformerLens-style hook that patches activation."""
             patch_tensor = torch.tensor(
                 patch_vec,
-                device=activation.device,
-                dtype=activation.dtype
+                device=self.model.cfg.device,
+                dtype=self.dtype
             )
-            # Only patch during the initial forward pass (not during generation)
-            if activation.shape[1] > pos:
-                activation[:, pos, :] = patch_tensor
-            return activation
+            def hook_fn(activation, hook):
+                # activation shape: (batch, seq, d_model)
+                # Only patch at the specified position
+                if activation.shape[1] > pos:
+                    activation[:, pos, :] = patch_tensor
+                return activation
+            return hook_fn
 
-        hooks = [
-            (f"blocks.{layer}.hook_resid_post",
-             partial(patch_hook, layer_idx=layer, patch_vec=act, pos=patch_position))
-            for layer, act in patch_activations.items()
-        ]
+        # Build list of (hook_name, hook_fn) tuples
+        fwd_hooks = []
+        for layer_idx, patch_vec in patch_activations.items():
+            if layer_idx < self.n_layers:
+                # TransformerLens hook point for residual stream post-attention
+                hook_name = f"blocks.{layer_idx}.hook_resid_post"
+                fwd_hooks.append((hook_name, make_patch_hook(patch_vec, patch_position)))
 
-        with torch.no_grad():
-            with self.model.hooks(hooks):
+        # Add hooks, generate, then reset
+        for hook_name, hook_fn in fwd_hooks:
+            self.model.add_hook(hook_name, hook_fn)
+
+        try:
+            with torch.no_grad():
                 output_tokens = self.model.generate(
                     tokens,
                     max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    do_sample=False if temperature == 0 else True
+                    temperature=temperature if temperature > 0 else 0.0,
+                    verbose=False
                 )
+        finally:
+            self.model.reset_hooks()
 
         response = self.model.to_string(output_tokens[0, tokens.shape[1]:])
         return response.strip()
@@ -394,31 +426,35 @@ class ActivationPatcher:
         if patch_position < 0:
             patch_position = seq_len + patch_position
 
-        def add_direction_hook(activation, hook, layer_idx, direction, pos, mult):
-            """Add direction vector to activation at specified position."""
+        def make_add_hook(direction, pos, mult):
+            """Create a hook that adds a direction vector."""
             dir_tensor = torch.tensor(
                 direction * mult,
-                device=activation.device,
-                dtype=activation.dtype
+                device=self.model.cfg.device,
+                dtype=self.dtype
             )
-            if activation.shape[1] > pos:
-                activation[:, pos, :] = activation[:, pos, :] + dir_tensor
-            return activation
+            def hook_fn(activation, hook):
+                if activation.shape[1] > pos:
+                    activation[:, pos, :] = activation[:, pos, :] + dir_tensor
+                return activation
+            return hook_fn
 
-        hooks = [
-            (f"blocks.{layer}.hook_resid_post",
-             partial(add_direction_hook, layer_idx=layer, direction=d, pos=patch_position, mult=scale))
-            for layer, d in directions.items()
-        ]
+        # Add hooks for each layer
+        for layer_idx, direction in directions.items():
+            if layer_idx < self.n_layers:
+                hook_name = f"blocks.{layer_idx}.hook_resid_post"
+                self.model.add_hook(hook_name, make_add_hook(direction, patch_position, scale))
 
-        with torch.no_grad():
-            with self.model.hooks(hooks):
+        try:
+            with torch.no_grad():
                 output_tokens = self.model.generate(
                     tokens,
                     max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    do_sample=False if temperature == 0 else True
+                    temperature=temperature if temperature > 0 else 0.0,
+                    verbose=False
                 )
+        finally:
+            self.model.reset_hooks()
 
         response = self.model.to_string(output_tokens[0, tokens.shape[1]:])
         return response.strip()
@@ -452,37 +488,40 @@ class ActivationPatcher:
         if patch_position < 0:
             patch_position = seq_len + patch_position
 
-        def ablate_direction_hook(activation, hook, layer_idx, direction, pos):
-            """Project out direction from activation at specified position."""
-            # Normalize direction
+        def make_ablate_hook(direction, pos):
+            """Create a hook that projects out a direction."""
             dir_tensor = torch.tensor(
                 direction,
-                device=activation.device,
-                dtype=activation.dtype
+                device=self.model.cfg.device,
+                dtype=self.dtype
             )
             dir_norm = dir_tensor / (torch.norm(dir_tensor) + 1e-8)
 
-            if activation.shape[1] > pos:
-                # Project out: a - (a · d)d where d is unit direction
-                act_at_pos = activation[:, pos, :]
-                projection = torch.sum(act_at_pos * dir_norm, dim=-1, keepdim=True) * dir_norm
-                activation[:, pos, :] = act_at_pos - projection
-            return activation
+            def hook_fn(activation, hook):
+                if activation.shape[1] > pos:
+                    # Project out: a - (a · d)d where d is unit direction
+                    act_at_pos = activation[:, pos, :]
+                    projection = torch.sum(act_at_pos * dir_norm, dim=-1, keepdim=True) * dir_norm
+                    activation[:, pos, :] = act_at_pos - projection
+                return activation
+            return hook_fn
 
-        hooks = [
-            (f"blocks.{layer}.hook_resid_post",
-             partial(ablate_direction_hook, layer_idx=layer, direction=d, pos=patch_position))
-            for layer, d in directions.items()
-        ]
+        # Add hooks for each layer
+        for layer_idx, direction in directions.items():
+            if layer_idx < self.n_layers:
+                hook_name = f"blocks.{layer_idx}.hook_resid_post"
+                self.model.add_hook(hook_name, make_ablate_hook(direction, patch_position))
 
-        with torch.no_grad():
-            with self.model.hooks(hooks):
+        try:
+            with torch.no_grad():
                 output_tokens = self.model.generate(
                     tokens,
                     max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    do_sample=False if temperature == 0 else True
+                    temperature=temperature if temperature > 0 else 0.0,
+                    verbose=False
                 )
+        finally:
+            self.model.reset_hooks()
 
         response = self.model.to_string(output_tokens[0, tokens.shape[1]:])
         return response.strip()
