@@ -618,15 +618,40 @@ def run_patching_experiment(
     annotations = load_annotations(str(Path(output_dir) / "annotations.json"))
     annotation_lookup = {a.case_id: a for a in annotations}
 
-    print(f"\nLoading base model: {base_model_name}")
-    base_patcher = ActivationPatcher(base_model_name, device=device)
-
-    print(f"\nLoading aligned model: {aligned_model_name}")
-    aligned_patcher = ActivationPatcher(aligned_model_name, device=device)
-
     print(f"\nRunning patching experiment on {len(cases)} cases...")
     print(f"Patch layers: {patch_layers}")
     print("=" * 60)
+
+    # === PHASE 1: Generate aligned model responses ===
+    # Load aligned model first, generate all responses, then free memory
+    print(f"\n--- PHASE 1: Generating aligned model responses ---")
+    print(f"Loading aligned model: {aligned_model_name}")
+    aligned_patcher = ActivationPatcher(aligned_model_name, device=device)
+
+    aligned_responses = {}
+    for i, case in enumerate(cases):
+        case_id = case["case_id"]
+        case_name = case.get("case_name", case_id)
+
+        if case_id not in annotation_lookup:
+            continue
+        if case_id not in aligned_activations:
+            continue
+
+        prompt = format_prompt(case)
+        print(f"  [{i+1}/{len(cases)}] {case_name[:40]}...")
+        aligned_responses[case_id] = aligned_patcher.generate_response(prompt, max_new_tokens=300)
+
+    # Free aligned model memory
+    print("\nFreeing aligned model memory...")
+    del aligned_patcher
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    # === PHASE 2: Generate base and patched responses ===
+    print(f"\n--- PHASE 2: Generating base and patched responses ---")
+    print(f"Loading base model: {base_model_name}")
+    base_patcher = ActivationPatcher(base_model_name, device=device)
 
     for i, case in enumerate(cases):
         case_id = case["case_id"]
@@ -665,9 +690,8 @@ def run_patching_experiment(
         base_response = base_patcher.generate_response(prompt, max_new_tokens=300)
         base_principle = parse_principle_from_response(base_response)
 
-        # 2. Aligned model response
-        print("  Generating aligned response...")
-        aligned_response = aligned_patcher.generate_response(prompt, max_new_tokens=300)
+        # 2. Get aligned response from phase 1
+        aligned_response = aligned_responses.get(case_id, "")
         aligned_principle = parse_principle_from_response(aligned_response)
 
         # 3. Patched base model response
