@@ -6,53 +6,67 @@ Runs both:
 1. Constitutional case patching (in-distribution)
 2. OOD comparison prompts
 
+IMPORTANT: Run from the scotus-constitutional-geometry root directory:
+    cd /path/to/scotus-constitutional-geometry
+    python causal_validation/scripts/run_all_causal_experiments.py --device cuda
+
 Usage:
     # Run all models
-    python run_all_causal_experiments.py --device cuda
+    python causal_validation/scripts/run_all_causal_experiments.py --device cuda
 
     # Run specific model
-    python run_all_causal_experiments.py --model llama3.2-3b --device cuda
+    python causal_validation/scripts/run_all_causal_experiments.py --model llama3.2-3b --device cuda
 
     # Quick test (3 cases, 2 OOD prompts)
-    python run_all_causal_experiments.py --model llama3.2-3b --quick --device cuda
+    python causal_validation/scripts/run_all_causal_experiments.py --model llama3.2-3b --quick --device cuda
+
+Round 2: Using optimized patch layers based on max R² from probing results.
 """
 
 import argparse
 import json
 import torch
 import gc
+import sys
 from pathlib import Path
 from datetime import datetime
 
-# Model configurations
-# Note: gemma2-27b removed - full results already in causal_validation_patching.json
+# Add scripts directory to path for local imports
+SCRIPT_DIR = Path(__file__).parent.resolve()
+sys.path.insert(0, str(SCRIPT_DIR))
+
+# Model configurations - ROUND 2: Optimized patch ranges based on max R² layers
+# See causal_validation/output/round1_initial_ranges/README.md for round 1 results
+#
+# NOTE: Gemma-2-27B not included - round 1 patch range (20-34) was already optimal
+# (max R² at layer 23, achieved 100% recovery). Results in round1_initial_ranges/.
 MODEL_CONFIGS = {
     "llama3.2-3b": {
         "output_dir": "./experiment_output",
         "base_model": "meta-llama/Llama-3.2-3B",
         "aligned_model": "meta-llama/Llama-3.2-3B-Instruct",
-        "patch_layers": list(range(14, 24)),  # Mid-to-upper layers for 28-layer model
+        "patch_layers": list(range(22, 28)),  # Optimized: max R² at layer 27
         "n_layers": 28,
     },
     "mistral-7b": {
         "output_dir": "./experiment_output_mistral_7b",
         "base_model": "mistralai/Mistral-7B-v0.1",
         "aligned_model": "mistralai/Mistral-7B-Instruct-v0.1",
-        "patch_layers": list(range(16, 28)),  # Mid-to-upper layers for 32-layer model
+        "patch_layers": list(range(21, 32)),  # Optimized: max R² at layer 26
         "n_layers": 32,
     },
     "qwen25-7b": {
         "output_dir": "./experiment_output_qwen25_7b",
         "base_model": "Qwen/Qwen2.5-7B",
         "aligned_model": "Qwen/Qwen2.5-7B-Instruct",
-        "patch_layers": list(range(16, 28)),  # Mid-to-upper layers for 32-layer model
-        "n_layers": 32,
+        "patch_layers": list(range(11, 22)),  # Optimized: max R² at layer 16
+        "n_layers": 28,
     },
     "llama3.1-8b": {
         "output_dir": "./experiment_output_llama31_8b",
         "base_model": "meta-llama/Llama-3.1-8B",
         "aligned_model": "meta-llama/Llama-3.1-8B-Instruct",
-        "patch_layers": list(range(16, 28)),  # Mid-to-upper layers for 32-layer model
+        "patch_layers": list(range(7, 18)),  # Optimized: max R² at layer 12
         "n_layers": 32,
     },
 }
@@ -340,7 +354,8 @@ def run_all_experiments(
         all_results["models"][model_name] = model_results
 
         # Save intermediate results
-        output_path = Path("causal_experiments_all_models.json")
+        output_path = Path("causal_validation/output/round2_optimized_ranges/all_models.json")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w') as f:
             json.dump(all_results, f, indent=2, default=str)
         print(f"\nSaved intermediate results to {output_path}")
@@ -413,7 +428,7 @@ def main():
     results = run_all_experiments(models, args.device, args.quick)
     print_summary(results)
 
-    print(f"\nFull results saved to: causal_experiments_all_models.json")
+    print(f"\nFull results saved to: causal_validation/output/round2_optimized_ranges/all_models.json")
 
 
 if __name__ == "__main__":
