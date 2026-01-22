@@ -31,9 +31,11 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-# Add scripts directory to path for local imports
+# Add paths for local imports
 SCRIPT_DIR = Path(__file__).parent.resolve()
-sys.path.insert(0, str(SCRIPT_DIR))
+ROOT_DIR = SCRIPT_DIR.parent.parent  # scotus-constitutional-geometry root
+sys.path.insert(0, str(SCRIPT_DIR))  # for causal_validation.py
+sys.path.insert(0, str(ROOT_DIR))    # for cases.py, extract_activations.py
 
 # Model configurations - ROUND 2: Optimized patch ranges based on max R² layers
 # See causal_validation/output/round1_initial_ranges/README.md for round 1 results
