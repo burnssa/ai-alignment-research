@@ -25,14 +25,8 @@ from pathlib import Path
 from datetime import datetime
 
 # Model configurations
+# Note: gemma2-27b removed - full results already in causal_validation_patching.json
 MODEL_CONFIGS = {
-    "gemma2-27b": {
-        "output_dir": "./experiment_output_gemma2_27b",
-        "base_model": "google/gemma-2-27b",
-        "aligned_model": "google/gemma-2-27b-it",
-        "patch_layers": list(range(20, 35)),
-        "n_layers": 46,
-    },
     "llama3.2-3b": {
         "output_dir": "./experiment_output",
         "base_model": "meta-llama/Llama-3.2-3B",
@@ -186,9 +180,9 @@ def run_constitutional_patching(
                 "base_correct": r.base_correct,
                 "aligned_correct": r.aligned_correct,
                 "patched_correct": r.patched_correct,
-                "base_response": r.base_response[:200] if r.base_response else None,
-                "patched_response": r.patched_response[:200] if r.patched_response else None,
-                "aligned_response": r.aligned_response[:200] if r.aligned_response else None,
+                "base_response": r.base_response,
+                "patched_response": r.patched_response,
+                "aligned_response": r.aligned_response,
             }
             for r in results.results
         ]
