@@ -54,6 +54,13 @@ MODEL_CONFIGS = {
         "patch_layers": list(range(16, 28)),  # Mid-to-upper layers for 32-layer model
         "n_layers": 32,
     },
+    "llama3.1-8b": {
+        "output_dir": "./experiment_output_llama31_8b",
+        "base_model": "meta-llama/Llama-3.1-8B",
+        "aligned_model": "meta-llama/Llama-3.1-8B-Instruct",
+        "patch_layers": list(range(16, 28)),  # Mid-to-upper layers for 32-layer model
+        "n_layers": 32,
+    },
 }
 
 # Constitutional cases for in-distribution testing
