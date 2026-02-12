@@ -119,8 +119,11 @@ python tutorial_activation_probing.py
 | llama3-8b | meta-llama/Meta-Llama-3-8B | meta-llama/Meta-Llama-3-8B-Instruct |
 | llama2-7b | meta-llama/Llama-2-7b-hf | meta-llama/Llama-2-7b-chat-hf |
 | mistral-7b | mistralai/Mistral-7B-v0.1 | mistralai/Mistral-7B-Instruct-v0.1 |
-| pythia-6.9b | EleutherAI/pythia-6.9b | (no aligned version) |
-| gpt2-medium | gpt2-medium | (no aligned version) |
+| qwen2.5-7b | Qwen/Qwen2.5-7B | Qwen/Qwen2.5-7B-Instruct |
+| qwen2.5-32b | Qwen/Qwen2.5-32B | Qwen/Qwen2.5-32B-Instruct |
+| gemma2-27b | google/gemma-2-27b | google/gemma-2-27b-it |
+
+**Note:** qwen2.5-32b and gemma2-27b are large models requiring A100 80GB+ GPUs.
 
 ## Expected Results
 
@@ -191,7 +194,7 @@ for annotation in annotations:
 
 **Out of memory on GPU**
 - Use `--device cpu` (slower but works)
-- Try smaller model: `--model-pair pythia-410m`
+- Try smaller model: `--model-pair llama3.2-3b`
 - Reduce batch size in extract_activations.py
 
 **TransformerLens not loading model**
