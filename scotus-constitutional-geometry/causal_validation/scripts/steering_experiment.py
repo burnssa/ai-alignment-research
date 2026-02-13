@@ -330,6 +330,7 @@ def run_steering_experiment(
     max_cases_per_principle: int = 5,
     max_new_tokens: int = 300,
     raw_directions: bool = False,
+    output_suffix: str = "",
 ) -> SteeringResults:
     """
     Run the full steering vector experiment.
@@ -347,8 +348,10 @@ def run_steering_experiment(
         max_cases_per_principle: max test cases per principle
         max_new_tokens: max tokens to generate per response
         raw_directions: skip scaler correction if True
+        output_suffix: appended to output directory name (e.g., "_large_alpha")
     """
-    output_path = OUTPUT_DIR / "steering"
+    subdir = "steering" + (f"_{output_suffix}" if output_suffix else "")
+    output_path = OUTPUT_DIR / subdir
     output_path.mkdir(parents=True, exist_ok=True)
 
     results = SteeringResults(
@@ -678,6 +681,10 @@ def main():
         "--quick", action="store_true",
         help="Quick test mode: 1 layer, 2 cases, 3 alphas (~30 trials)"
     )
+    parser.add_argument(
+        "--output-suffix", type=str, default="",
+        help="Suffix for output directory (e.g., 'large_alpha' -> steering_large_alpha/)"
+    )
 
     args = parser.parse_args()
 
@@ -704,6 +711,7 @@ def main():
         max_cases_per_principle=max_cases,
         max_new_tokens=args.max_new_tokens,
         raw_directions=args.raw_directions,
+        output_suffix=args.output_suffix,
     )
 
 
