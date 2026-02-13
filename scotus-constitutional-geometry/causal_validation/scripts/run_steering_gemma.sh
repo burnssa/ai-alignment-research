@@ -111,7 +111,7 @@ echo ""
 
 python causal_validation/scripts/steering_experiment.py \
     --layers 20,23,26 \
-    --alphas -3,-2,-1,-0.5,0,0.5,1,2,3 \
+    --alphas="-3,-2,-1,-0.5,0,0.5,1,2,3" \
     --max-cases 5 \
     --device cuda
 
