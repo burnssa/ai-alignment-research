@@ -446,6 +446,67 @@ class ActivationPatcher:
         response = self.model.to_string(output_tokens[0, tokens.shape[1]:])
         return response.strip()
 
+    def generate_with_direction_add_all_positions(
+        self,
+        prompt: str,
+        directions: dict[int, np.ndarray],
+        scale: float = 1.0,
+        max_new_tokens: int = 200,
+        temperature: float = 0.0
+    ) -> str:
+        """
+        Generate response with direction vectors added at ALL token positions.
+
+        Unlike generate_with_direction_add (single position), this adds the
+        steering vector to every position on every forward pass — including
+        during autoregressive generation with KV caching. This follows the
+        activation addition methodology from Turner et al. (2023).
+
+        Args:
+            prompt: Input prompt
+            directions: layer -> direction vector (d_model,) to add
+            scale: Multiplier for direction vectors
+            max_new_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+
+        Returns:
+            Generated response string
+        """
+        tokens = self.model.to_tokens(prompt)
+
+        def make_add_all_hook(direction, mult):
+            """Create a hook that adds a direction vector to all positions."""
+            dir_tensor = torch.tensor(
+                direction * mult,
+                device=self.model.cfg.device,
+                dtype=self.dtype
+            )
+            def hook_fn(activation, hook):
+                # Add to all positions — works during both prefill and generation
+                activation[:, :, :] = activation[:, :, :] + dir_tensor
+                return activation
+            return hook_fn
+
+        # Add hooks for each layer
+        for layer_idx, direction in directions.items():
+            if layer_idx < self.n_layers:
+                hook_name = f"blocks.{layer_idx}.hook_resid_post"
+                self.model.add_hook(hook_name, make_add_all_hook(direction, scale))
+
+        try:
+            with torch.no_grad():
+                output_tokens = self.model.generate(
+                    tokens,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature if temperature > 0 else 0.0,
+                    verbose=False
+                )
+        finally:
+            self.model.reset_hooks()
+
+        response = self.model.to_string(output_tokens[0, tokens.shape[1]:])
+        return response.strip()
+
     def generate_with_ablation(
         self,
         prompt: str,

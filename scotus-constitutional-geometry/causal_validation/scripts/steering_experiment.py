@@ -480,7 +480,8 @@ def run_steering_experiment(
                             temperature=0.0,
                         )
                     else:
-                        response = patcher.generate_with_direction_add(
+                        # Steer at all positions (Turner et al. 2023 style)
+                        response = patcher.generate_with_direction_add_all_positions(
                             formatted_prompt,
                             direction_dict,
                             scale=alpha,
