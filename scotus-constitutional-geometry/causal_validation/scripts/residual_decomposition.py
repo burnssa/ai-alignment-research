@@ -15,8 +15,14 @@ Three phases:
 3. Attention Pattern Analysis: What do specialist heads attend to?
    (token-level attention distribution)
 
-The residual stream decomposition is exact because Gemma 2 uses pre-norm:
-  resid_post[L] = embed + sum_{l=0}^{L} (attn_out[l] + mlp_out[l])
+The decomposition is exact via residual stream differences:
+  attn_contribution[l] = resid_mid[l] - resid_pre[l]  (includes post-attn-norm)
+  mlp_contribution[l]  = resid_post[l] - resid_mid[l]  (includes post-mlp-norm)
+  resid_post[L] = embed + sum_{l=0}^{L} (attn_contribution[l] + mlp_contribution[l])
+
+Note: Gemma 2 uses sandwich norms (post-attention and post-MLP RMSNorm).
+TransformerLens hook_attn_out/hook_mlp_out capture values BEFORE these norms,
+so we must use resid_mid/resid_post differences to get the true additive terms.
 
 Usage:
     # Quick test (5 cases, Phase 1 only)
@@ -65,8 +71,17 @@ def decompose_residual_stream(model, tokens, probe_layer):
     """
     Run model with cache and extract all component outputs at last token.
 
-    The residual stream at layer L-1 (0-indexed) decomposes as:
-      resid_post[L-1] = embed + sum_{l=0}^{L-1} (attn_out[l] + mlp_out[l])
+    Gemma 2 uses sandwich norms: post-attention and post-MLP RMSNorm are
+    applied BEFORE adding to the residual stream. TransformerLens hooks
+    hook_attn_out/hook_mlp_out capture values BEFORE these norms, so using
+    them directly breaks additivity.
+
+    Instead, we compute true additive contributions via residual differences:
+      attn_contribution[l] = resid_mid[l] - resid_pre[l]
+      mlp_contribution[l]  = resid_post[l] - resid_mid[l]
+
+    These include the post-norms and sum exactly:
+      resid_post[L-1] = embed + sum_{l=0}^{L-1} (attn_contrib[l] + mlp_contrib[l])
 
     For probe_layer=23, we decompose layers 0-22 (inclusive), giving:
       1 embed + 23 attn + 23 mlp = 47 components
@@ -83,12 +98,11 @@ def decompose_residual_stream(model, tokens, probe_layer):
     """
     target_layer = probe_layer - 1  # 0-indexed layer whose resid_post we decompose
 
-    # Build names filter for efficient caching
+    # Build names filter: we need embed, resid_mid, and resid_post for each layer
     names = {"hook_embed"}
     for l in range(probe_layer):  # layers 0 to probe_layer-1
-        names.add(f"blocks.{l}.hook_attn_out")
-        names.add(f"blocks.{l}.hook_mlp_out")
-    names.add(f"blocks.{target_layer}.hook_resid_post")
+        names.add(f"blocks.{l}.hook_resid_mid")
+        names.add(f"blocks.{l}.hook_resid_post")
 
     with torch.no_grad():
         _, cache = model.run_with_cache(
@@ -99,17 +113,25 @@ def decompose_residual_stream(model, tokens, probe_layer):
     last_pos = tokens.shape[1] - 1
     components = {}
 
-    # Embedding
-    components["embed"] = cache["hook_embed"][0, last_pos, :].float().cpu().numpy()
+    # Embedding = resid_pre[0]
+    embed = cache["hook_embed"][0, last_pos, :].float().cpu().numpy()
+    components["embed"] = embed
 
-    # Attention and MLP outputs for each layer
+    # For each layer, compute true additive contributions via differences
+    # resid_pre[0] = embed
+    # resid_pre[l] = resid_post[l-1] for l > 0
     for l in range(probe_layer):
-        components[f"attn_{l}"] = (
-            cache[f"blocks.{l}.hook_attn_out"][0, last_pos, :].float().cpu().numpy()
-        )
-        components[f"mlp_{l}"] = (
-            cache[f"blocks.{l}.hook_mlp_out"][0, last_pos, :].float().cpu().numpy()
-        )
+        resid_mid_l = cache[f"blocks.{l}.hook_resid_mid"][0, last_pos, :].float().cpu().numpy()
+        resid_post_l = cache[f"blocks.{l}.hook_resid_post"][0, last_pos, :].float().cpu().numpy()
+
+        if l == 0:
+            resid_pre_l = embed
+        else:
+            resid_pre_l = cache[f"blocks.{l-1}.hook_resid_post"][0, last_pos, :].float().cpu().numpy()
+
+        # True additive contributions (includes post-norms)
+        components[f"attn_{l}"] = resid_mid_l - resid_pre_l
+        components[f"mlp_{l}"] = resid_post_l - resid_mid_l
 
     # Verification target
     resid_post = (
@@ -205,9 +227,15 @@ def extract_head_contributions(model, tokens, layer):
     Uses hook_z (pre-W_O, shape: batch, pos, n_heads, d_head) and manually
     applies W_O to get each head's contribution in d_model space.
 
+    NOTE: These per-head contributions sum to hook_attn_out (before post-norm).
+    Gemma 2's post-attention RMSNorm is applied to the sum, not per-head,
+    so individual head projections onto probe directions are approximate
+    (the norm rescales but preserves direction, so relative magnitudes
+    are meaningful even though absolute values are pre-norm).
+
     Returns:
         head_contributions: list of n_heads (d_model,) numpy arrays
-        attn_out: (d_model,) numpy array for verification
+        attn_out: (d_model,) numpy array for verification (pre-post-norm)
         bias: (d_model,) numpy array (attention output bias, may be zero)
     """
     names = {
