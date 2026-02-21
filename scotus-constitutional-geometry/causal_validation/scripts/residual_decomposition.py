@@ -261,7 +261,7 @@ def extract_head_contributions(model, tokens, layer):
     head_contributions = []
     for h in range(n_heads):
         # z[h] @ W_O[h] -> (d_model,)
-        contrib = (z[h] @ W_O[h]).float().cpu().numpy()
+        contrib = (z[h] @ W_O[h]).detach().float().cpu().numpy()
         head_contributions.append(contrib)
 
     attn_out = cache[f"blocks.{layer}.hook_attn_out"][0, last_pos, :].float().cpu().numpy()
@@ -269,7 +269,7 @@ def extract_head_contributions(model, tokens, layer):
     # Get bias (may be zero for models without attention bias)
     b_O = model.blocks[layer].attn.b_O
     if b_O is not None:
-        bias = b_O.float().cpu().numpy()
+        bias = b_O.detach().float().cpu().numpy()
     else:
         bias = np.zeros(model.cfg.d_model)
 
