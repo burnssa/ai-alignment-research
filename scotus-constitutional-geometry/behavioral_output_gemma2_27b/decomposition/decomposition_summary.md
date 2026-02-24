@@ -11,8 +11,8 @@ Which components write the most signal in each probe direction?
 
 ### Free Expression
 
-| Rank | Component | Mean |Proj| | Mean Proj | Std |
-|-----:|-----------|--------:|----------:|----:|
+| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |
+|-----:|-----------|---------------:|----------:|----:|
 | 1 | mlp_0 | 61.3634 | -61.3634 | 0.2267 |
 | 2 | mlp_21 | 15.5784 | -15.5784 | 3.4419 |
 | 3 | mlp_22 | 14.8471 | +14.8471 | 4.3672 |
@@ -31,8 +31,8 @@ Which components write the most signal in each probe direction?
 
 ### Equal Protection
 
-| Rank | Component | Mean |Proj| | Mean Proj | Std |
-|-----:|-----------|--------:|----------:|----:|
+| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |
+|-----:|-----------|---------------:|----------:|----:|
 | 1 | mlp_0 | 68.3382 | +68.3382 | 0.2491 |
 | 2 | mlp_22 | 30.5933 | -30.5933 | 4.3752 |
 | 3 | attn_22 | 10.3531 | -9.7805 | 6.1421 |
@@ -51,8 +51,8 @@ Which components write the most signal in each probe direction?
 
 ### Due Process
 
-| Rank | Component | Mean |Proj| | Mean Proj | Std |
-|-----:|-----------|--------:|----------:|----:|
+| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |
+|-----:|-----------|---------------:|----------:|----:|
 | 1 | mlp_19 | 20.7330 | +20.7330 | 1.0405 |
 | 2 | mlp_22 | 16.5890 | +16.5890 | 3.4223 |
 | 3 | mlp_21 | 14.5673 | +14.5673 | 2.2729 |
@@ -71,8 +71,8 @@ Which components write the most signal in each probe direction?
 
 ### Federalism
 
-| Rank | Component | Mean |Proj| | Mean Proj | Std |
-|-----:|-----------|--------:|----------:|----:|
+| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |
+|-----:|-----------|---------------:|----------:|----:|
 | 1 | mlp_0 | 13.0377 | +13.0377 | 0.2518 |
 | 2 | mlp_18 | 11.0314 | +11.0314 | 0.6326 |
 | 3 | mlp_22 | 10.0542 | +10.0542 | 2.5674 |
@@ -91,8 +91,8 @@ Which components write the most signal in each probe direction?
 
 ### Privacy Liberty
 
-| Rank | Component | Mean |Proj| | Mean Proj | Std |
-|-----:|-----------|--------:|----------:|----:|
+| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |
+|-----:|-----------|---------------:|----------:|----:|
 | 1 | mlp_19 | 12.2804 | +12.2804 | 0.9838 |
 | 2 | mlp_20 | 11.1981 | +11.1981 | 1.3727 |
 | 3 | mlp_22 | 9.3832 | +9.3832 | 2.2492 |
@@ -111,7 +111,7 @@ Which components write the most signal in each probe direction?
 
 ### Attribution Concentration
 
-How concentrated is the signal? (Top-5 components as % of total |projection|)
+How concentrated is the signal? (Top-5 components as % of total absolute projection)
 
 | Principle | Top-5 % | Top-10 % | Interpretation |
 |-----------|--------:|---------:|---------------|
@@ -123,8 +123,8 @@ How concentrated is the signal? (Top-5 components as % of total |projection|)
 
 ### MLP vs Attention Contribution
 
-| Principle | Attn Total |Proj| | MLP Total |Proj| | Embed |Proj| |
-|-----------|------------:|------------:|----------:|
+| Principle | Attn Total Abs(Proj) | MLP Total Abs(Proj) | Embed Abs(Proj) |
+|-----------|---------------------:|--------------------:|----------------:|
 | free_expression | 76.0364 | 180.9432 | 5.3788 |
 | equal_protection | 58.2812 | 172.2369 | 0.0364 |
 | due_process | 49.2478 | 114.1465 | 5.0302 |
@@ -177,8 +177,8 @@ Which attention heads write the strongest signal?
 
 ### Specialist Heads Summary
 
-| Layer | Head | Top Principle | Mean |Proj| |
-|------:|-----:|--------------|--------:|
+| Layer | Head | Top Principle | Mean Abs(Proj) |
+|------:|-----:|--------------|---------------:|
 | 21 | 31 | equal_protection | 1.5604 |
 | 2 | 0 | due_process | 1.2832 |
 | 21 | 24 | equal_protection | 0.6793 |

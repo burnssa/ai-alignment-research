@@ -747,8 +747,8 @@ def generate_summary(phase1_results, phase2_results, phase3_results, output_dir)
     for p_idx, principle in enumerate(PRINCIPLE_NAMES):
         lines.append(f"### {principle.replace('_', ' ').title()}")
         lines.append("")
-        lines.append("| Rank | Component | Mean |Proj| | Mean Proj | Std |")
-        lines.append("|-----:|-----------|--------:|----------:|----:|")
+        lines.append("| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |")
+        lines.append("|-----:|-----------|---------------:|----------:|----:|")
 
         ranked = sorted(
             component_data.items(),
@@ -769,7 +769,7 @@ def generate_summary(phase1_results, phase2_results, phase3_results, output_dir)
     lines.append("### Attribution Concentration")
     lines.append("")
     lines.append("How concentrated is the signal? "
-                 "(Top-5 components as % of total |projection|)")
+                 "(Top-5 components as % of total absolute projection)")
     lines.append("")
     lines.append("| Principle | Top-5 % | Top-10 % | Interpretation |")
     lines.append("|-----------|--------:|---------:|---------------|")
@@ -801,9 +801,9 @@ def generate_summary(phase1_results, phase2_results, phase3_results, output_dir)
     lines.append("### MLP vs Attention Contribution")
     lines.append("")
     lines.append(
-        "| Principle | Attn Total |Proj| | MLP Total |Proj| | Embed |Proj| |"
+        "| Principle | Attn Total Abs(Proj) | MLP Total Abs(Proj) | Embed Abs(Proj) |"
     )
-    lines.append("|-----------|------------:|------------:|----------:|")
+    lines.append("|-----------|---------------------:|--------------------:|----------------:|")
 
     for p_idx, principle in enumerate(PRINCIPLE_NAMES):
         attn_total = sum(
@@ -854,8 +854,8 @@ def generate_summary(phase1_results, phase2_results, phase3_results, output_dir)
         # Specialist heads summary
         lines.append("### Specialist Heads Summary")
         lines.append("")
-        lines.append("| Layer | Head | Top Principle | Mean |Proj| |")
-        lines.append("|------:|-----:|--------------|--------:|")
+        lines.append("| Layer | Head | Top Principle | Mean Abs(Proj) |")
+        lines.append("|------:|-----:|--------------|---------------:|")
 
         all_heads = []
         for layer_str, layer_data in phase2_results["layers"].items():
