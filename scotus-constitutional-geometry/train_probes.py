@@ -341,6 +341,79 @@ def compare_models(
     return comparison
 
 
+def permutation_test(
+    trainer: LinearProbeTrainer,
+    activations: dict,
+    annotations: list,
+    layers: list[int],
+    n_permutations: int = 100,
+    seed: int = 42,
+) -> dict:
+    """
+    Permutation test for annotation validity.
+
+    Shuffles the principle weight vectors across cases (breaking the
+    case-principle correspondence) and re-runs probes. If the real R²
+    is significantly higher than the shuffled distribution, the signal
+    is genuine rather than an artifact of overfitting or confounds.
+
+    Args:
+        trainer: Configured LinearProbeTrainer
+        activations: case_id -> ActivationCache
+        annotations: List of PrincipleAnnotation
+        layers: Which layers to test
+        n_permutations: Number of random shuffles
+        seed: Random seed for reproducibility
+
+    Returns:
+        Dict with per-layer results: real_r2, shuffled_mean, shuffled_std,
+        shuffled_distribution, p_value
+    """
+    rng = np.random.RandomState(seed)
+    results = {}
+
+    for layer in layers:
+        X, y, case_ids = trainer.prepare_data(activations, annotations, layer)
+        if len(case_ids) < 3:
+            print(f"  Layer {layer}: Insufficient data, skipping")
+            continue
+
+        # Real R²
+        real_result = trainer.train_probe(X, y, layer)
+        real_r2 = real_result.r2_score
+
+        # Shuffled R² distribution
+        shuffled_r2s = []
+        for i in range(n_permutations):
+            perm = rng.permutation(len(y))
+            y_shuffled = y[perm]
+            shuffled_result = trainer.train_probe(X, y_shuffled, layer)
+            shuffled_r2s.append(shuffled_result.r2_score)
+
+            if (i + 1) % 25 == 0:
+                print(f"    Layer {layer}: {i + 1}/{n_permutations} permutations done")
+
+        shuffled_r2s = np.array(shuffled_r2s)
+        p_value = float(np.mean(shuffled_r2s >= real_r2))
+
+        results[layer] = {
+            "real_r2": real_r2,
+            "shuffled_mean": float(np.mean(shuffled_r2s)),
+            "shuffled_std": float(np.std(shuffled_r2s)),
+            "shuffled_min": float(np.min(shuffled_r2s)),
+            "shuffled_max": float(np.max(shuffled_r2s)),
+            "p_value": p_value,
+            "n_permutations": n_permutations,
+            "n_cases": len(case_ids),
+        }
+
+        print(f"  Layer {layer:2d}: Real R²={real_r2:.4f} | "
+              f"Shuffled R²={np.mean(shuffled_r2s):.4f} (±{np.std(shuffled_r2s):.4f}) | "
+              f"p={p_value:.4f}")
+
+    return results
+
+
 def analyze_probe_weights(
     result: ProbeResult,
     top_k: int = 20
@@ -462,17 +535,109 @@ def plot_layer_comparison(comparison: ProbeComparison, output_path: Optional[str
         plt.show()
 
 
-# === Example usage ===
+# === CLI ===
 
 if __name__ == "__main__":
-    print("Linear Probe Training Module")
-    print("=" * 50)
-    print("\nCore functionality:")
-    print("1. LinearProbeTrainer - Train probes layer by layer")
-    print("2. compare_models() - Full base vs aligned comparison")
-    print("3. plot_layer_comparison() - Visualize results")
-    print("\nUsage:")
-    print("  trainer = LinearProbeTrainer()")
-    print("  results = trainer.train_all_layers(activations, annotations, n_layers)")
-    print("  comparison = compare_models(base_act, aligned_act, annotations, n_layers)")
-    print("  print(comparison.summary_report())")
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Train linear probes and run validation tests")
+    parser.add_argument("--permutation-test", action="store_true",
+                        help="Run permutation test to validate annotations")
+    parser.add_argument("--activations-dir", type=str,
+                        default="experiment_output/activations/aligned",
+                        help="Directory containing activation .npz files")
+    parser.add_argument("--annotations-file", type=str,
+                        default="experiment_output/annotations.json",
+                        help="Path to annotations.json")
+    parser.add_argument("--layers", type=str, default=None,
+                        help="Comma-separated layers to test (default: all)")
+    parser.add_argument("--n-permutations", type=int, default=100,
+                        help="Number of permutation shuffles (default: 100)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed")
+    parser.add_argument("--output", type=str, default=None,
+                        help="Save results to JSON file")
+    args = parser.parse_args()
+
+    # Resolve paths relative to this script's directory
+    script_dir = Path(__file__).parent
+    act_dir = script_dir / args.activations_dir
+    ann_file = script_dir / args.annotations_file
+
+    if args.permutation_test:
+        from extract_activations import load_activation_dataset
+        from annotate_principles import load_annotations
+
+        print("=" * 60)
+        print("PERMUTATION TEST: Annotation Validation")
+        print("=" * 60)
+
+        # Load data
+        print(f"\nLoading activations from {act_dir}")
+        activations = load_activation_dataset(str(act_dir))
+
+        print(f"Loading annotations from {ann_file}")
+        annotations = load_annotations(str(ann_file))
+        print(f"  {len(annotations)} annotations loaded")
+
+        # Determine layers
+        sample_cache = next(iter(activations.values()))
+        n_layers = sample_cache.n_layers
+        if args.layers:
+            layers = [int(l) for l in args.layers.split(",")]
+        else:
+            layers = list(range(n_layers))
+
+        print(f"\nTesting {len(layers)} layers with {args.n_permutations} permutations each")
+        print(f"Seed: {args.seed}")
+        print(f"Cases: {len(activations)}")
+        print()
+
+        import sklearn
+        print(f"sklearn version: {sklearn.__version__}")
+        print()
+
+        trainer = LinearProbeTrainer()
+        results = permutation_test(
+            trainer, activations, annotations,
+            layers=layers,
+            n_permutations=args.n_permutations,
+            seed=args.seed,
+        )
+
+        # Summary
+        print("\n" + "=" * 60)
+        print("PERMUTATION TEST RESULTS")
+        print("=" * 60)
+        print(f"{'Layer':>5} | {'Real R²':>8} | {'Shuffled R²':>12} | {'p-value':>8} | {'Result':>12}")
+        print("-" * 60)
+        for layer in sorted(results.keys()):
+            r = results[layer]
+            sig = "SIGNIFICANT" if r["p_value"] < 0.05 else "not sig."
+            print(f"{layer:5d} | {r['real_r2']:8.4f} | "
+                  f"{r['shuffled_mean']:6.4f}±{r['shuffled_std']:.4f} | "
+                  f"{r['p_value']:8.4f} | {sig:>12}")
+
+        # Save
+        output_path = args.output
+        if output_path is None:
+            output_path = str(script_dir / "experiment_output" / "permutation_test.json")
+        with open(output_path, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"\nResults saved to {output_path}")
+
+    else:
+        print("Linear Probe Training Module")
+        print("=" * 50)
+        print("\nUsage:")
+        print("  # Run permutation test")
+        print("  python train_probes.py --permutation-test")
+        print("  python train_probes.py --permutation-test --layers 15,20,25,27")
+        print("  python train_probes.py --permutation-test --n-permutations 500")
+        print()
+        print("  # Programmatic usage")
+        print("  trainer = LinearProbeTrainer()")
+        print("  results = trainer.train_all_layers(activations, annotations, n_layers)")
+        print("  comparison = compare_models(base_act, aligned_act, annotations, n_layers)")
+        print("  print(comparison.summary_report())")
