@@ -3,15 +3,22 @@
 Residual Stream Decomposition for Constitutional Principle Geometry
 
 Decomposes the residual stream at the probe layer into per-component
-contributions (embedding, attention outputs, MLP outputs) and projects
-each onto probe directions. This identifies which model components
-actually write the information that linear probes read.
+contributions (embedding, attention outputs, MLP outputs) and measures
+each component's DISCRIMINATIVE VALUE: how well its per-case projection
+onto probe directions correlates with ground-truth principle weights.
+
+This is the corrected methodology. The original version ranked components
+by mean absolute projection, which is dominated by large constant offsets
+(e.g., mlp_0 writes ~61 units but with std < 0.25 across cases). Since
+probes use StandardScaler + Ridge, they only exploit between-case variation.
+Mean absolute projection conflates constant offsets with discriminative signal.
 
 Three phases:
-1. Layer-Component Attribution: Which layers/components contribute most
-   to each principle direction? (47 components for layer 23)
-2. Head-Level Attribution: For top attention layers, which heads write
-   the strongest signal? (per-head W_O projection analysis)
+1. Layer-Component Attribution: Which attn/MLP components contribute the
+   most case-discriminative signal? (47 components for layer 23)
+   Metrics: Pearson r with ground truth, cross-case std, variance fraction
+2. Head-Level Attribution: For top discriminative attention layers, which
+   heads write the strongest signal? (per-head W_O projection analysis)
 3. Attention Pattern Analysis: What do specialist heads attend to?
    (token-level attention distribution)
 
@@ -398,14 +405,64 @@ def _component_sort_key(name):
     return (int(parts[1]), 0 if parts[0] == "attn" else 1)
 
 
+# === Discriminative Metrics ===
+
+def compute_discriminative_metrics(per_case_projections, y_gt, component_names, principle_names):
+    """
+    For each component and principle, compute discriminative metrics:
+    - Pearson r between component's per-case projection and ground-truth weight
+    - Cross-case std of projection (raw variation available to probe)
+    - Variance of projection (for variance decomposition)
+
+    Args:
+        per_case_projections: dict of component_name -> (n_cases, n_principles) array
+        y_gt: (n_cases, n_principles) ground-truth principle weights
+        component_names: list of component names
+        principle_names: list of principle names
+
+    Returns:
+        List of dicts sorted by mean |r|, one per component.
+    """
+    results = []
+
+    for comp_name in component_names:
+        projections = per_case_projections[comp_name]  # (n_cases, n_principles)
+        correlations = []
+        stds = []
+
+        for p_idx in range(len(principle_names)):
+            proj_series = projections[:, p_idx]
+            gt_series = y_gt[:, p_idx]
+
+            stds.append(float(np.std(proj_series)))
+
+            if np.std(proj_series) < 1e-10 or np.std(gt_series) < 1e-10:
+                correlations.append(0.0)
+            else:
+                r = float(np.corrcoef(proj_series, gt_series)[0, 1])
+                correlations.append(r)
+
+        results.append({
+            "component": comp_name,
+            "correlations": dict(zip(principle_names, correlations)),
+            "mean_abs_r": float(np.mean(np.abs(correlations))),
+            "stds": dict(zip(principle_names, stds)),
+            "mean_std": float(np.mean(stds)),
+        })
+
+    results.sort(key=lambda x: x["mean_abs_r"], reverse=True)
+    return results
+
+
 # === Phase Runners ===
 
-def run_phase1(model, cases, directions, probe_layer, output_dir, stored_activations=None):
+def run_phase1(model, cases, directions, probe_layer, output_dir, y_gt, stored_activations=None):
     """
-    Phase 1: Layer-Component Attribution.
+    Phase 1: Layer-Component Attribution with Discriminative Metrics.
 
     For each case, decompose the residual stream at probe_layer into
     per-component contributions and project onto probe directions.
+    Ranks components by Pearson r with ground truth (not mean abs projection).
     """
     print("\n" + "=" * 60)
     print("PHASE 1: Layer-Component Attribution")
@@ -453,6 +510,16 @@ def run_phase1(model, cases, directions, probe_layer, output_dir, stored_activat
 
     component_names = sorted(all_attributions.keys(), key=_component_sort_key)
 
+    # Build per-case projection arrays
+    per_case_projections = {}
+    for name in component_names:
+        per_case_projections[name] = np.array(all_attributions[name])  # (n_cases, n_principles)
+
+    # Compute discriminative metrics (Pearson r with ground truth)
+    discriminative = compute_discriminative_metrics(
+        per_case_projections, y_gt, component_names, PRINCIPLE_NAMES
+    )
+
     results = {
         "probe_layer": probe_layer,
         "n_cases": len(cases),
@@ -460,31 +527,43 @@ def run_phase1(model, cases, directions, probe_layer, output_dir, stored_activat
         "n_principles": n_principles,
         "principle_names": PRINCIPLE_NAMES,
         "max_verification_error": float(max_error),
+        "discriminative_attribution": discriminative,
         "components": {},
     }
 
     for name in component_names:
-        projections = np.array(all_attributions[name])  # (n_cases, n_principles)
+        projections = per_case_projections[name]
         results["components"][name] = {
             "mean": projections.mean(axis=0).tolist(),
             "std": projections.std(axis=0).tolist(),
             "mean_abs": np.abs(projections).mean(axis=0).tolist(),
             "max_abs": np.abs(projections).max(axis=0).tolist(),
+            "per_case": projections.tolist(),
         }
 
-    # Print top components for each principle
-    for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-        print(f"\n  --- {principle} ---")
-        ranked = sorted(
-            component_names,
-            key=lambda n: np.abs(np.array(all_attributions[n]))[:, p_idx].mean(),
-            reverse=True,
-        )
-        for rank, name in enumerate(ranked[:10]):
-            mean_abs = np.abs(np.array(all_attributions[name]))[:, p_idx].mean()
-            mean_signed = np.array(all_attributions[name])[:, p_idx].mean()
-            print(f"    {rank+1}. {name:15s}  mean|proj|={mean_abs:.4f}  "
-                  f"mean_proj={mean_signed:+.4f}")
+    # Print discriminative ranking
+    print("\n  DISCRIMINATIVE ATTRIBUTION (ranked by mean |r| with ground truth)")
+    print("  " + "=" * 100)
+    print(f"  {'Component':<12} | {'FreeExp':>8} {'EqualProt':>10} {'DueProc':>8} "
+          f"{'Federal':>8} {'Privacy':>8} | {'Mean|r|':>8} {'MeanStd':>8}")
+    print("  " + "-" * 100)
+
+    for entry in discriminative:
+        c = entry["correlations"]
+        print(f"  {entry['component']:<12} | "
+              f"{c['free_expression']:>+8.3f} {c['equal_protection']:>+10.3f} "
+              f"{c['due_process']:>+8.3f} {c['federalism']:>+8.3f} "
+              f"{c['privacy_liberty']:>+8.3f} | "
+              f"{entry['mean_abs_r']:>8.3f} {entry['mean_std']:>8.2f}")
+
+    # Also print MLP vs Attention summary
+    attn_entries = [e for e in discriminative if e["component"].startswith("attn_")]
+    mlp_entries = [e for e in discriminative if e["component"].startswith("mlp_")]
+    if attn_entries and mlp_entries:
+        attn_best = max(attn_entries, key=lambda e: e["mean_abs_r"])
+        mlp_best = max(mlp_entries, key=lambda e: e["mean_abs_r"])
+        print(f"\n  Best attn component: {attn_best['component']} (mean|r|={attn_best['mean_abs_r']:.3f})")
+        print(f"  Best MLP component:  {mlp_best['component']} (mean|r|={mlp_best['mean_abs_r']:.3f})")
 
     output_path = Path(output_dir) / "phase1_layer_attribution.json"
     with open(output_path, "w") as f:
@@ -495,25 +574,38 @@ def run_phase1(model, cases, directions, probe_layer, output_dir, stored_activat
 
 
 def run_phase2(model, cases, directions, probe_layer, phase1_results,
-               top_k_layers, output_dir):
+               top_k_layers, output_dir, y_gt=None):
     """
     Phase 2: Head-Level Attribution for top attention layers from Phase 1.
 
     Decomposes each attention layer's output into per-head contributions
-    using z @ W_O, then projects onto probe directions.
+    using z @ W_O, then projects onto probe directions. Selects top layers
+    by discriminative value (mean |r|) and computes per-head discriminative
+    metrics.
     """
     print("\n" + "=" * 60)
     print("PHASE 2: Head-Level Attribution")
     print("=" * 60)
 
-    component_data = phase1_results["components"]
-
-    # Score each attention layer by mean absolute projection across principles
-    attn_layer_scores = {}
-    for name, data in component_data.items():
-        if name.startswith("attn_"):
-            layer_idx = int(name.split("_")[1])
-            attn_layer_scores[layer_idx] = np.mean(data["mean_abs"])
+    # Select top attention layers by discriminative value if available
+    disc_attr = phase1_results.get("discriminative_attribution")
+    if disc_attr:
+        attn_layer_scores = {}
+        for entry in disc_attr:
+            name = entry["component"]
+            if name.startswith("attn_"):
+                layer_idx = int(name.split("_")[1])
+                attn_layer_scores[layer_idx] = entry["mean_abs_r"]
+        score_label = "mean|r|"
+    else:
+        # Fallback to mean_abs for legacy phase1 results
+        component_data = phase1_results["components"]
+        attn_layer_scores = {}
+        for name, data in component_data.items():
+            if name.startswith("attn_"):
+                layer_idx = int(name.split("_")[1])
+                attn_layer_scores[layer_idx] = np.mean(data["mean_abs"])
+        score_label = "mean|proj|"
 
     top_attn_layers = sorted(
         attn_layer_scores.keys(),
@@ -522,7 +614,7 @@ def run_phase2(model, cases, directions, probe_layer, phase1_results,
     )[:top_k_layers]
     top_attn_layers.sort()  # restore layer order
 
-    print(f"  Top {top_k_layers} attention layers: {top_attn_layers}")
+    print(f"  Top {top_k_layers} attention layers by {score_label}: {top_attn_layers}")
     print(f"  Scores: "
           f"{[f'{l}:{attn_layer_scores[l]:.4f}' for l in top_attn_layers]}")
 
@@ -578,30 +670,52 @@ def run_phase2(model, cases, directions, probe_layer, phase1_results,
             "heads": {},
         }
 
+        # Build per-head per-case projection arrays for discriminative metrics
+        head_per_case = {}
         for h in range(n_heads):
-            projections = np.array(all_head_projections[h])
+            projections = np.array(all_head_projections[h])  # (n_cases, n_principles)
+            head_per_case[f"H{h}"] = projections
             layer_results["heads"][str(h)] = {
                 "mean": projections.mean(axis=0).tolist(),
                 "std": projections.std(axis=0).tolist(),
                 "mean_abs": np.abs(projections).mean(axis=0).tolist(),
+                "per_case": projections.tolist(),
             }
 
-        results["layers"][str(layer)] = layer_results
-
-        # Print top heads per principle
-        for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-            ranked = sorted(
-                range(n_heads),
-                key=lambda h: np.abs(
-                    np.array(all_head_projections[h])
-                )[:, p_idx].mean(),
-                reverse=True,
+        # Compute discriminative metrics for heads in this layer
+        if y_gt is not None:
+            head_names = [f"H{h}" for h in range(n_heads)]
+            head_disc = compute_discriminative_metrics(
+                head_per_case, y_gt, head_names, PRINCIPLE_NAMES
             )
-            top3_strs = []
-            for h in ranked[:3]:
-                score = np.abs(np.array(all_head_projections[h]))[:, p_idx].mean()
-                top3_strs.append(f"H{h}({score:.4f})")
-            print(f"    {principle}: top heads = {', '.join(top3_strs)}")
+            layer_results["discriminative_attribution"] = head_disc
+
+            # Print top heads by discriminative value
+            print(f"\n    HEAD DISCRIMINATIVE RANKING (layer {layer}):")
+            for entry in head_disc[:10]:
+                c = entry["correlations"]
+                print(f"      {entry['component']:<5} | "
+                      f"FE={c['free_expression']:+.3f} EP={c['equal_protection']:+.3f} "
+                      f"DP={c['due_process']:+.3f} FD={c['federalism']:+.3f} "
+                      f"PL={c['privacy_liberty']:+.3f} | "
+                      f"mean|r|={entry['mean_abs_r']:.3f}")
+        else:
+            # Fallback: print by mean_abs
+            for p_idx, principle in enumerate(PRINCIPLE_NAMES):
+                ranked = sorted(
+                    range(n_heads),
+                    key=lambda h: np.abs(
+                        np.array(all_head_projections[h])
+                    )[:, p_idx].mean(),
+                    reverse=True,
+                )
+                top3_strs = []
+                for h in ranked[:3]:
+                    score = np.abs(np.array(all_head_projections[h]))[:, p_idx].mean()
+                    top3_strs.append(f"H{h}({score:.4f})")
+                print(f"    {principle}: top heads = {', '.join(top3_strs)}")
+
+        results["layers"][str(layer)] = layer_results
 
     output_path = Path(output_dir) / "phase2_head_attribution.json"
     with open(output_path, "w") as f:
@@ -622,17 +736,27 @@ def run_phase3(model, cases, directions, phase2_results, top_k_heads, output_dir
     print("PHASE 3: Attention Pattern Analysis")
     print("=" * 60)
 
-    # Identify specialist heads across all layers and principles
+    # Identify specialist heads — prefer discriminative ranking if available
     specialist_candidates = []
     for layer_str, layer_data in phase2_results["layers"].items():
         layer = int(layer_str)
-        for head_str, head_data in layer_data["heads"].items():
-            head = int(head_str)
-            mean_abs = head_data["mean_abs"]
-            best_p_idx = int(np.argmax(mean_abs))
-            specialist_candidates.append(
-                (layer, head, PRINCIPLE_NAMES[best_p_idx], mean_abs[best_p_idx])
-            )
+        head_disc = layer_data.get("discriminative_attribution")
+        if head_disc:
+            for entry in head_disc:
+                head = int(entry["component"].replace("H", ""))
+                corrs = list(entry["correlations"].values())
+                best_p_idx = int(np.argmax(np.abs(corrs)))
+                specialist_candidates.append(
+                    (layer, head, PRINCIPLE_NAMES[best_p_idx], entry["mean_abs_r"])
+                )
+        else:
+            for head_str, head_data in layer_data["heads"].items():
+                head = int(head_str)
+                mean_abs = head_data["mean_abs"]
+                best_p_idx = int(np.argmax(mean_abs))
+                specialist_candidates.append(
+                    (layer, head, PRINCIPLE_NAMES[best_p_idx], mean_abs[best_p_idx])
+                )
 
     specialist_candidates.sort(key=lambda x: x[3], reverse=True)
 
@@ -724,9 +848,9 @@ def run_phase3(model, cases, directions, phase2_results, top_k_heads, output_dir
 # === Summary Report ===
 
 def generate_summary(phase1_results, phase2_results, phase3_results, output_dir):
-    """Generate markdown report combining all phases."""
+    """Generate markdown report combining all phases with discriminative metrics."""
     lines = [
-        "# Residual Stream Decomposition Results",
+        "# Residual Stream Decomposition — Discriminative Attribution",
         "",
         f"**Date**: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
         f"**Probe Layer**: {phase1_results['probe_layer']}",
@@ -734,146 +858,142 @@ def generate_summary(phase1_results, phase2_results, phase3_results, output_dir)
         f"**Decomposition Verification Error**: "
         f"{phase1_results['max_verification_error']:.6f}",
         "",
+        "Metrics: Pearson r between each component's per-case projection onto",
+        "probe directions and the ground-truth principle weight. This captures",
+        "what the probe can actually use (between-case variation), unlike mean",
+        "absolute projection which is dominated by constant offsets.",
+        "",
     ]
 
+    disc_attr = phase1_results.get("discriminative_attribution", [])
     component_data = phase1_results["components"]
 
-    # --- Phase 1 ---
-    lines.append("## Phase 1: Layer-Component Attribution")
+    # --- Phase 1: Discriminative Attribution Table ---
+    lines.append("## Phase 1: Attn/MLP Discriminative Attribution")
     lines.append("")
-    lines.append("Which components write the most signal in each probe direction?")
-    lines.append("")
-
-    for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-        lines.append(f"### {principle.replace('_', ' ').title()}")
-        lines.append("")
-        lines.append("| Rank | Component | Mean Abs(Proj) | Mean Proj | Std |")
-        lines.append("|-----:|-----------|---------------:|----------:|----:|")
-
-        ranked = sorted(
-            component_data.items(),
-            key=lambda x: x[1]["mean_abs"][p_idx],
-            reverse=True,
-        )
-        for rank, (name, data) in enumerate(ranked[:15]):
-            mean_abs = data["mean_abs"][p_idx]
-            mean_signed = data["mean"][p_idx]
-            std = data["std"][p_idx]
-            lines.append(
-                f"| {rank+1} | {name} | {mean_abs:.4f} | "
-                f"{mean_signed:+.4f} | {std:.4f} |"
-            )
-        lines.append("")
-
-    # Concentration analysis
-    lines.append("### Attribution Concentration")
-    lines.append("")
-    lines.append("How concentrated is the signal? "
-                 "(Top-5 components as % of total absolute projection)")
-    lines.append("")
-    lines.append("| Principle | Top-5 % | Top-10 % | Interpretation |")
-    lines.append("|-----------|--------:|---------:|---------------|")
-
-    for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-        all_mean_abs = [
-            (name, data["mean_abs"][p_idx]) for name, data in component_data.items()
-        ]
-        all_mean_abs.sort(key=lambda x: x[1], reverse=True)
-        total = sum(x[1] for x in all_mean_abs)
-        top5 = sum(x[1] for x in all_mean_abs[:5])
-        top10 = sum(x[1] for x in all_mean_abs[:10])
-
-        pct5 = top5 / total * 100 if total > 0 else 0
-        pct10 = top10 / total * 100 if total > 0 else 0
-
-        if pct5 > 50:
-            interp = "concentrated"
-        elif pct5 > 30:
-            interp = "moderately concentrated"
-        else:
-            interp = "diffuse"
-
-        lines.append(f"| {principle} | {pct5:.1f}% | {pct10:.1f}% | {interp} |")
-
+    lines.append("Which attn/MLP components write the most case-discriminative signal?")
     lines.append("")
 
-    # MLP vs Attention breakdown
-    lines.append("### MLP vs Attention Contribution")
-    lines.append("")
     lines.append(
-        "| Principle | Attn Total Abs(Proj) | MLP Total Abs(Proj) | Embed Abs(Proj) |"
+        "| Rank | Component | FreeExp r | EqualProt r | DueProc r "
+        "| Federal r | Privacy r | Mean |r| | Mean Std |"
     )
-    lines.append("|-----------|---------------------:|--------------------:|----------------:|")
+    lines.append(
+        "|-----:|-----------|----------:|------------:|----------:"
+        "|----------:|----------:|---------:|---------:|"
+    )
 
-    for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-        attn_total = sum(
-            data["mean_abs"][p_idx] for name, data in component_data.items()
-            if name.startswith("attn_")
-        )
-        mlp_total = sum(
-            data["mean_abs"][p_idx] for name, data in component_data.items()
-            if name.startswith("mlp_")
-        )
-        embed_val = component_data.get("embed", {}).get("mean_abs", [0]*5)[p_idx]
+    for rank, entry in enumerate(disc_attr):
+        c = entry["correlations"]
         lines.append(
-            f"| {principle} | {attn_total:.4f} | {mlp_total:.4f} | "
-            f"{embed_val:.4f} |"
+            f"| {rank+1} | {entry['component']} "
+            f"| {c['free_expression']:+.3f} "
+            f"| {c['equal_protection']:+.3f} "
+            f"| {c['due_process']:+.3f} "
+            f"| {c['federalism']:+.3f} "
+            f"| {c['privacy_liberty']:+.3f} "
+            f"| {entry['mean_abs_r']:.3f} "
+            f"| {entry['mean_std']:.2f} |"
         )
-
     lines.append("")
 
-    # --- Phase 2 ---
-    if phase2_results:
-        lines.append("## Phase 2: Head-Level Attribution")
+    # MLP vs Attention discriminative summary
+    attn_entries = [e for e in disc_attr if e["component"].startswith("attn_")]
+    mlp_entries = [e for e in disc_attr if e["component"].startswith("mlp_")]
+    if attn_entries and mlp_entries:
+        lines.append("### MLP vs Attention (Discriminative)")
         lines.append("")
-        lines.append("Which attention heads write the strongest signal?")
+        attn_mean_r = np.mean([e["mean_abs_r"] for e in attn_entries])
+        mlp_mean_r = np.mean([e["mean_abs_r"] for e in mlp_entries])
+        attn_best = max(attn_entries, key=lambda e: e["mean_abs_r"])
+        mlp_best = max(mlp_entries, key=lambda e: e["mean_abs_r"])
+        lines.append(f"- Attention mean |r| across all layers: {attn_mean_r:.3f}")
+        lines.append(f"- MLP mean |r| across all layers: {mlp_mean_r:.3f}")
+        lines.append(
+            f"- Best attn: {attn_best['component']} (mean|r|={attn_best['mean_abs_r']:.3f})"
+        )
+        lines.append(
+            f"- Best MLP: {mlp_best['component']} (mean|r|={mlp_best['mean_abs_r']:.3f})"
+        )
+        lines.append("")
+
+    # --- Phase 2: Head-Level Discriminative Attribution ---
+    if phase2_results:
+        lines.append("## Phase 2: Head-Level Discriminative Attribution")
+        lines.append("")
+        lines.append("Which attention heads write the most case-discriminative signal?")
         lines.append("")
 
         for layer_str in sorted(phase2_results["layers"].keys(), key=int):
             layer_data = phase2_results["layers"][layer_str]
+            head_disc = layer_data.get("discriminative_attribution", [])
+
             lines.append(f"### Layer {layer_str}")
             lines.append("")
 
-            for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-                head_scores = []
-                for head_str, head_data in layer_data["heads"].items():
-                    head_scores.append((
-                        int(head_str),
-                        head_data["mean_abs"][p_idx],
-                        head_data["mean"][p_idx],
-                    ))
-                head_scores.sort(key=lambda x: x[1], reverse=True)
-
-                parts = [
-                    f"H{h}({abs_s:.4f}, {sign_s:+.4f})"
-                    for h, abs_s, sign_s in head_scores[:5]
-                ]
-                lines.append(f"**{principle}**: {', '.join(parts)}")
+            if head_disc:
+                lines.append(
+                    "| Rank | Head | FreeExp r | EqualProt r | DueProc r "
+                    "| Federal r | Privacy r | Mean |r| |"
+                )
+                lines.append(
+                    "|-----:|-----:|----------:|------------:|----------:"
+                    "|----------:|----------:|---------:|"
+                )
+                for rank, entry in enumerate(head_disc[:10]):
+                    c = entry["correlations"]
+                    lines.append(
+                        f"| {rank+1} | {entry['component']} "
+                        f"| {c['free_expression']:+.3f} "
+                        f"| {c['equal_protection']:+.3f} "
+                        f"| {c['due_process']:+.3f} "
+                        f"| {c['federalism']:+.3f} "
+                        f"| {c['privacy_liberty']:+.3f} "
+                        f"| {entry['mean_abs_r']:.3f} |"
+                    )
+            else:
+                # Fallback for legacy data
+                for p_idx, principle in enumerate(PRINCIPLE_NAMES):
+                    head_scores = []
+                    for head_str, head_data in layer_data["heads"].items():
+                        head_scores.append((
+                            int(head_str),
+                            head_data["mean_abs"][p_idx],
+                        ))
+                    head_scores.sort(key=lambda x: x[1], reverse=True)
+                    parts = [f"H{h}({s:.4f})" for h, s in head_scores[:5]]
+                    lines.append(f"**{principle}**: {', '.join(parts)}")
             lines.append("")
 
-        # Specialist heads summary
-        lines.append("### Specialist Heads Summary")
-        lines.append("")
-        lines.append("| Layer | Head | Top Principle | Mean Abs(Proj) |")
-        lines.append("|------:|-----:|--------------|---------------:|")
-
-        all_heads = []
+        # Cross-layer specialist heads summary
+        all_head_entries = []
         for layer_str, layer_data in phase2_results["layers"].items():
-            for head_str, head_data in layer_data["heads"].items():
-                best_idx = int(np.argmax(head_data["mean_abs"]))
-                all_heads.append((
-                    int(layer_str), int(head_str),
-                    PRINCIPLE_NAMES[best_idx],
-                    head_data["mean_abs"][best_idx],
+            head_disc = layer_data.get("discriminative_attribution", [])
+            for entry in head_disc:
+                head = int(entry["component"].replace("H", ""))
+                corrs = list(entry["correlations"].values())
+                best_p_idx = int(np.argmax(np.abs(corrs)))
+                all_head_entries.append((
+                    int(layer_str), head,
+                    PRINCIPLE_NAMES[best_p_idx],
+                    entry["mean_abs_r"],
                 ))
-        all_heads.sort(key=lambda x: x[3], reverse=True)
-
-        seen = set()
-        for layer, head, principle, score in all_heads[:20]:
-            if (layer, head) not in seen:
-                lines.append(f"| {layer} | {head} | {principle} | {score:.4f} |")
-                seen.add((layer, head))
-        lines.append("")
+        if all_head_entries:
+            all_head_entries.sort(key=lambda x: x[3], reverse=True)
+            lines.append("### Top Specialist Heads (Cross-Layer)")
+            lines.append("")
+            lines.append("| Rank | Layer | Head | Top Principle | Mean |r| |")
+            lines.append("|-----:|------:|-----:|--------------|--------:|")
+            seen = set()
+            rank = 0
+            for layer, head, principle, score in all_head_entries:
+                if (layer, head) not in seen and rank < 20:
+                    rank += 1
+                    lines.append(
+                        f"| {rank} | {layer} | {head} | {principle} | {score:.3f} |"
+                    )
+                    seen.add((layer, head))
+            lines.append("")
 
     # --- Phase 3 ---
     if phase3_results:
@@ -918,35 +1038,24 @@ def generate_summary(phase1_results, phase2_results, phase3_results, output_dir)
     lines.append("## Interpretation")
     lines.append("")
 
-    for p_idx, principle in enumerate(PRINCIPLE_NAMES):
-        all_mean_abs = [
-            (name, component_data[name]["mean_abs"][p_idx])
-            for name in component_data
-        ]
-        all_mean_abs.sort(key=lambda x: x[1], reverse=True)
-        total = sum(x[1] for x in all_mean_abs)
-        top5_pct = (
-            sum(x[1] for x in all_mean_abs[:5]) / total * 100 if total > 0 else 0
+    if disc_attr:
+        top3 = disc_attr[:3]
+        lines.append(
+            f"Top discriminative components: "
+            f"{top3[0]['component']} (mean|r|={top3[0]['mean_abs_r']:.3f}), "
+            f"{top3[1]['component']} ({top3[1]['mean_abs_r']:.3f}), "
+            f"{top3[2]['component']} ({top3[2]['mean_abs_r']:.3f})"
         )
+        lines.append("")
 
-        top_component = all_mean_abs[0][0]
-        top_score = all_mean_abs[0][1]
-
-        if top5_pct > 50:
-            lines.append(
-                f"- **{principle}**: Concentrated signal. "
-                f"Top component: {top_component} ({top_score:.4f}). "
-                f"Top-5 = {top5_pct:.0f}% of total. "
-                f"Suggests localized circuit."
-            )
-        else:
-            lines.append(
-                f"- **{principle}**: Diffuse signal. "
-                f"Top component: {top_component} ({top_score:.4f}). "
-                f"Top-5 = {top5_pct:.0f}% of total. "
-                f"Suggests distributed representation."
-            )
-
+        # Check if attn or MLP dominates discriminatively
+        top10_attn = sum(1 for e in disc_attr[:10] if e["component"].startswith("attn_"))
+        top10_mlp = sum(1 for e in disc_attr[:10] if e["component"].startswith("mlp_"))
+        lines.append(
+            f"In top-10 discriminative components: "
+            f"{top10_attn} attention, {top10_mlp} MLP, "
+            f"{10 - top10_attn - top10_mlp} other"
+        )
     lines.append("")
 
     summary_text = "\n".join(lines)
@@ -1043,12 +1152,16 @@ def main():
     del activations
     gc.collect()
 
-    # === Select cases ===
-    annotation_ids = {a.case_id for a in annotations}
-    cases = [c for c in ALL_CASES if c["case_id"] in annotation_ids]
+    # === Select cases and build ground truth ===
+    ann_lookup = {a.case_id: a for a in annotations}
+    cases = [c for c in ALL_CASES if c["case_id"] in ann_lookup]
     if max_cases:
         cases = cases[:max_cases]
     print(f"\nUsing {len(cases)} cases")
+
+    # Ground-truth principle weights aligned with case order
+    y_gt = np.array([ann_lookup[c["case_id"]].to_vector() for c in cases])
+    print(f"Ground truth shape: {y_gt.shape}")
 
     # === Load model ===
     print("\n" + "=" * 60)
@@ -1071,7 +1184,8 @@ def main():
 
     if 1 in phases:
         phase1_results = run_phase1(
-            model, cases, directions, args.probe_layer, decomp_dir
+            model, cases, directions, args.probe_layer, decomp_dir,
+            y_gt=y_gt,
         )
     else:
         p1_path = decomp_dir / "phase1_layer_attribution.json"
@@ -1087,6 +1201,7 @@ def main():
         phase2_results = run_phase2(
             model, cases, directions, args.probe_layer,
             phase1_results, args.top_k_layers, decomp_dir,
+            y_gt=y_gt,
         )
     else:
         p2_path = decomp_dir / "phase2_head_attribution.json"
