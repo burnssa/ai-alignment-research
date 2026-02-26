@@ -2,9 +2,12 @@
 
 ## Overview
 
-This document summarizes causal validation experiments testing whether activation geometry discovered via linear probing is **causally necessary** for aligned constitutional reasoning behavior.
+This document summarizes causal validation experiments testing whether activation geometry discovered via linear probing is **causally relevant** to aligned constitutional reasoning behavior.
 
-**Method**: Patch residual stream activations from aligned model into base model at specific layers during inference, measuring whether this recovers aligned behavior.
+Two complementary approaches were tested:
+
+1. **Activation Patching**: Replace residual stream activations from aligned model into base model at specific layers during inference, measuring whether this recovers aligned behavior.
+2. **Activation Steering**: Add scaled probe-derived principle directions to the aligned model's residual stream during inference, measuring whether this shifts which constitutional principles the model invokes.
 
 ---
 
@@ -148,17 +151,106 @@ Patching activations may cause interference effects:
 
 ---
 
+## Activation Steering Experiments (Gemma 2-27B)
+
+Given that activation patching recovered aligned behavior for Gemma 2-27B, we next tested whether the probe-derived principle directions could *steer* model outputs — i.e., whether adding a scaled "free expression" direction to activations on a case where free expression is irrelevant would cause the model to rank that principle higher.
+
+**Method**: Extract per-principle direction vectors from trained Ridge probes (with scaler correction), select test cases where the target principle has low ground-truth weight, then add the scaled direction to the aligned model's residual stream during autoregressive generation. Measure whether the steered principle's rank shifts monotonically with the scaling factor (alpha). All generation used temperature 0.0 for deterministic outputs.
+
+### Experiment Rounds
+
+Four rounds of steering experiments were conducted, progressively expanding the parameter space:
+
+| Round | Layers | Alpha Range | Position | Trials | Date |
+|-------|--------|-------------|----------|--------|------|
+| 1. Standard | 20, 23, 26 | -3 to +3 | All tokens | 675 | 2026-02-12 |
+| 2. Large alpha | 23 | -500 to +500 | All tokens | 90 | 2026-02-13 |
+| 3. All-positions | 23 | -3 to +3 | All tokens | 90 | 2026-02-13 |
+| 4. Medium alpha | 23 | -50 to +50 | All tokens | 225 | 2026-02-19 |
+
+All rounds used the activation addition approach from Turner et al. (2023), adding the steering direction at every token position in the residual stream at the target layer.
+
+### Results: No Steering Effect Observed
+
+Across all 1,080 total trials, principle rankings showed **no monotonic relationship with steering magnitude**. Rankings remained essentially constant regardless of alpha:
+
+| Principle | Typical Rank | Rank Variance Across Alphas | Monotonicity (r) |
+|-----------|-------------|----------------------------|-------------------|
+| Due Process | 2 | 0.00 | -0.054 |
+| Equal Protection | 3 | 0.00 | n/a |
+| Federalism | 3 | 0.00 | n/a |
+| Privacy/Liberty | 4 | 0.00 | n/a |
+| Free Expression | 4-5 | ~0.15 | 0.087 |
+
+Even at extreme alpha values (500x the probe direction norm), principle rankings did not shift. At the highest magnitudes, responses occasionally became unparseable (NaN ranks), but when parseable, rankings were unchanged.
+
+### Verifying the Steering Hook Was Active
+
+A natural concern: if outputs are unchanged, was the hook even applied? Text analysis confirms it was. At alpha=50, **80% of responses had different wording** compared to baseline — the model's justifications and phrasing shift, but the principle rankings do not.
+
+| Alpha | Responses with changed text |
+|------:|:---------------------------|
+| ±10 | 44–60% |
+| ±20 | 48–68% |
+| ±30 | 52–72% |
+| ±50 | 64–80% |
+
+### Example: Wording Changes, Rankings Don't
+
+**Case**: *Roe v. Wade* (1973) — steered toward **free expression** at layer 23
+
+> **Alpha = 0.0 (baseline)**:
+>
+> 1. **Privacy/Liberty** — The core of Roe v. Wade hinges on the right to privacy, which the Court found implied within the Fourteenth Amendment's Due Process Clause, encompassing a woman's right to make decisions about her own body, including whether to terminate a pregnancy.
+> 2. **Due Process** — The Fourteenth Amendment's Due Process Clause was used to argue that the right to privacy is fundamental and that the Texas law violated this right by depriving women of liberty without due process of law.
+> 3. **Equal Protection** — While not the central issue, arguments could be made that the Texas law...
+>
+> *(Only 3 principles listed; free expression not mentioned)*
+
+> **Alpha = +50.0 (50x the free expression probe direction added to residual stream)**:
+>
+> 1. **Privacy/Liberty** — The core of the case hinges on whether the Constitution protects a woman's right to make personal decisions about her body and reproductive health, which falls under the right to privacy.
+> 2. **Due Process** — The Fourteenth Amendment's Due Process Clause was used to argue that the right to privacy is a fundamental right that cannot be infringed upon by the state without due process of law.
+> 3. **Equal Protection** — While not the central issue, arguments could be made that laws restricting abortion disproportionately impact women...
+> 4. **Federalism** — The case involved a conflict between state law...
+> 5. **Free Expression** — This principle is not directly relevant to the core issue...
+>
+> *(Free expression appears but explicitly ranked last and dismissed as irrelevant)*
+
+The steering demonstrably altered the model's output — justifications are rephrased, the response is longer, and the steered principle even appears in the list. But it is placed at rank 5 with a dismissive explanation. The model "knows" the steering is pushing toward free expression and actively resists reranking it.
+
+**Case**: *Whalen v. Roe* (1977) — steered toward **equal protection** at layer 23
+
+> **Alpha = 0.0**: "Here's a **breakdown** of the constitutional principles..." — Due Process: "If a right to privacy is recognized, the state's action of collecting and storing this information would be subject to due process scrutiny..."
+>
+> **Alpha = +50.0**: "Here's a **ranking** of the constitutional principles..." — Due Process: "The requirement to report prescription information could be challenged as a violation of due process if it is deemed to be an unreasonable search or seizure..."
+
+Different framing, different legal reasoning, same ranking: Privacy/Liberty > Due Process > Equal Protection (rank 3, unchanged).
+
+### Interpretation
+
+The null steering result, combined with the positive patching result, suggests a clear asymmetry:
+
+- **Patching works**: Wholesale replacement of activations at layers 20-34 recovers aligned behavior in the base model (100% recovery rate). This confirms the relevant information *lives* in those layer representations.
+- **Steering doesn't work**: Adding scaled probe directions does not shift fine-grained principle rankings. The probe directions capture *readable* structure (probing succeeds) but do not correspond to the causal mechanism that determines which principles the model emphasizes.
+
+This is consistent with the **readout vs. control** distinction in mechanistic interpretability: linear probes may find directions that *correlate* with principle weights without those directions being the levers that *control* downstream behavior. The causal mechanism likely involves distributed, nonlinear interactions across layers rather than a single addable direction at one layer.
+
+---
+
 ## Conclusions
 
 ### What We Can Claim
 1. **Activation geometry exists** across all models (probing works)
 2. **Geometry is causally sufficient for Gemma-2-27B** (100% recovery via patching)
 3. **Geometry is necessary but not sufficient** for in-distribution tasks (OOD patching fails even for Gemma)
+4. **Probe directions are readable but not steerable** — linear probes find correlational structure that does not function as a causal control lever for fine-grained principle selection (1,080 steering trials, zero monotonic effect)
 
 ### What We Cannot Claim
-1. ❌ Universal causal role of activation geometry (only works for Gemma)
+1. ❌ Universal causal role of activation geometry (patching only works for Gemma)
 2. ❌ RLHF creates constitutional reasoning (Qwen has it without alignment)
 3. ❌ Activation patching as general interpretability technique (highly model-specific)
+4. ❌ Principle-level steering via probe directions (no effect across 4 experiment rounds and alpha magnitudes spanning 0.5 to 500)
 
 ### Revised Thesis
-> The constitutional geometry discovered via linear probing represents a **model-specific** encoding of value-relevant information. Its causal role in producing aligned behavior depends on architecture, scale, and the interaction between patched representations and downstream model computations. For Gemma-2-27B, this geometry is directly causal; for other models, the relationship is more complex.
+> The constitutional geometry discovered via linear probing represents a **model-specific** encoding of value-relevant information. Its causal role in producing aligned behavior depends on architecture, scale, and the interaction between patched representations and downstream model computations. For Gemma-2-27B, wholesale activation patching recovers aligned behavior (100% in-distribution), confirming the information resides in those layers — but adding scaled probe directions does not steer fine-grained principle selection, indicating a gap between readable geometry and causal control.
