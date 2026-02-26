@@ -900,8 +900,8 @@ The existing within-model transfer test (aligned probe → base activations) sho
 
 We re-ran the full probe pipeline on the current local environment (sklearn 1.7.2) and compared layer-by-layer R² curves against the original RunPod-generated values.
 
-| Model | d_model | Aligned curve Pearson r | Mean |shift| | Assessment |
-|-------|---------|------------------------|-------------|------------|
+| Model | d_model | Aligned curve Pearson r | Mean &#124;shift&#124; | Assessment |
+|-------|---------|------------------------|-----------------|------------|
 | **Llama 3.2-3B** | 3072 | **1.000** | 0.000 | Perfectly reproducible |
 | Llama 3.1-8B | 4096 | 0.923 | 0.358 | Shape preserved |
 | Mistral-7B | 4096 | 0.886 | 0.506 | Shape preserved |
