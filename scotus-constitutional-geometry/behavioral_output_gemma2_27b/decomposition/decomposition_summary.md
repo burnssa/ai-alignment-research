@@ -14,7 +14,7 @@ absolute projection which is dominated by constant offsets.
 
 Which attn/MLP components write the most case-discriminative signal?
 
-| Rank | Component | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean |r| | Mean Std |
+| Rank | Component | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean &#124;r&#124; | Mean Std |
 |-----:|-----------|----------:|------------:|----------:|----------:|----------:|---------:|---------:|
 | 1 | attn_22 | +0.905 | +0.699 | +0.909 | +0.952 | +0.946 | 0.882 | 6.07 |
 | 2 | attn_21 | +0.890 | +0.907 | +0.875 | +0.844 | +0.807 | 0.865 | 3.35 |
@@ -66,10 +66,10 @@ Which attn/MLP components write the most case-discriminative signal?
 
 ### MLP vs Attention (Discriminative)
 
-- Attention mean |r| across all layers: 0.376
-- MLP mean |r| across all layers: 0.280
-- Best attn: attn_22 (mean|r|=0.882)
-- Best MLP: mlp_21 (mean|r|=0.619)
+- Attention mean &#124;r&#124; across all layers: 0.376
+- MLP mean &#124;r&#124; across all layers: 0.280
+- Best attn: attn_22 (mean &#124;r&#124;=0.882)
+- Best MLP: mlp_21 (mean &#124;r&#124;=0.619)
 
 ## Phase 2: Head-Level Discriminative Attribution
 
@@ -77,7 +77,7 @@ Which attention heads write the most case-discriminative signal?
 
 ### Layer 17
 
-| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean |r| |
+| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean &#124;r&#124; |
 |-----:|-----:|----------:|------------:|----------:|----------:|----------:|---------:|
 | 1 | H30 | +0.517 | +0.408 | +0.353 | +0.489 | +0.423 | 0.438 |
 | 2 | H4 | +0.608 | -0.321 | +0.570 | -0.190 | -0.008 | 0.340 |
@@ -92,7 +92,7 @@ Which attention heads write the most case-discriminative signal?
 
 ### Layer 18
 
-| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean |r| |
+| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean &#124;r&#124; |
 |-----:|-----:|----------:|------------:|----------:|----------:|----------:|---------:|
 | 1 | H9 | +0.636 | +0.120 | +0.422 | +0.855 | +0.221 | 0.451 |
 | 2 | H28 | +0.594 | +0.441 | +0.246 | +0.409 | +0.083 | 0.355 |
@@ -107,7 +107,7 @@ Which attention heads write the most case-discriminative signal?
 
 ### Layer 20
 
-| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean |r| |
+| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean &#124;r&#124; |
 |-----:|-----:|----------:|------------:|----------:|----------:|----------:|---------:|
 | 1 | H15 | +0.712 | +0.595 | +0.458 | +0.656 | +0.214 | 0.527 |
 | 2 | H3 | +0.117 | +0.492 | -0.438 | +0.312 | +0.339 | 0.340 |
@@ -122,7 +122,7 @@ Which attention heads write the most case-discriminative signal?
 
 ### Layer 21
 
-| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean |r| |
+| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean &#124;r&#124; |
 |-----:|-----:|----------:|------------:|----------:|----------:|----------:|---------:|
 | 1 | H28 | +0.658 | +0.443 | +0.332 | +0.482 | +0.456 | 0.474 |
 | 2 | H16 | +0.499 | +0.369 | +0.076 | +0.477 | +0.437 | 0.372 |
@@ -137,7 +137,7 @@ Which attention heads write the most case-discriminative signal?
 
 ### Layer 22
 
-| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean |r| |
+| Rank | Head | FreeExp r | EqualProt r | DueProc r | Federal r | Privacy r | Mean &#124;r&#124; |
 |-----:|-----:|----------:|------------:|----------:|----------:|----------:|---------:|
 | 1 | H26 | +0.349 | +0.302 | +0.673 | +0.569 | +0.770 | 0.533 |
 | 2 | H25 | +0.807 | +0.118 | +0.610 | +0.425 | +0.636 | 0.519 |
@@ -152,7 +152,7 @@ Which attention heads write the most case-discriminative signal?
 
 ### Top Specialist Heads (Cross-Layer)
 
-| Rank | Layer | Head | Top Principle | Mean |r| |
+| Rank | Layer | Head | Top Principle | Mean &#124;r&#124; |
 |-----:|------:|-----:|--------------|--------:|
 | 1 | 22 | 26 | privacy_liberty | 0.533 |
 | 2 | 20 | 15 | free_expression | 0.527 |
@@ -321,6 +321,6 @@ What do specialist heads attend to?
 
 ## Interpretation
 
-Top discriminative components: attn_22 (mean|r|=0.882), attn_21 (0.865), attn_20 (0.779)
+Top discriminative components: attn_22 (mean &#124;r&#124;=0.882), attn_21 (0.865), attn_20 (0.779)
 
 In top-10 discriminative components: 8 attention, 2 MLP, 0 other

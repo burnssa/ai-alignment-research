@@ -159,16 +159,16 @@ Given that activation patching recovered aligned behavior for Gemma 2-27B, we ne
 
 ### Experiment Rounds
 
-Four rounds of steering experiments were conducted, progressively expanding the parameter space:
+Four rounds of steering experiments were conducted, iterating on the intervention approach after each null result:
 
 | Round | Layers | Alpha Range | Position | Trials | Date |
 |-------|--------|-------------|----------|--------|------|
-| 1. Standard | 20, 23, 26 | -3 to +3 | All tokens | 675 | 2026-02-12 |
+| 1. Standard | 20, 23, 26 | -3 to +3 | **Last token only** | 675 | 2026-02-12 |
 | 2. Large alpha | 23 | -500 to +500 | All tokens | 90 | 2026-02-13 |
 | 3. All-positions | 23 | -3 to +3 | All tokens | 90 | 2026-02-13 |
 | 4. Medium alpha | 23 | -50 to +50 | All tokens | 225 | 2026-02-19 |
 
-All rounds used the activation addition approach from Turner et al. (2023), adding the steering direction at every token position in the residual stream at the target layer.
+Round 1 added the steering direction only at the final token position in the prompt. After observing no effect, we hypothesized that modifying a single token's residual stream was insufficient to shift downstream generation, and switched to adding the direction at **every token position** on every forward pass (following Turner et al. 2023). Rounds 2–4 used this all-positions approach. The null result persisted across both methods.
 
 ### Results: No Steering Effect Observed
 
