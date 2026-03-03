@@ -25,6 +25,12 @@ Usage:
     # Custom layers and alphas
     python causal_validation/scripts/steering_experiment.py \
         --layers 20,23,26 --alphas -3,-1,0,1,3 --device cuda
+
+    # Norm-relative alphas (recommended): alpha=0.5 means perturbation
+    # L2 norm = 50% of mean residual stream norm at that layer
+    python causal_validation/scripts/steering_experiment.py \
+        --layers 23 --alphas=-0.5,-0.1,0,0.1,0.5,1.0 \
+        --norm-relative --device cuda
 """
 
 import argparse
@@ -81,6 +87,7 @@ class SteeringTrial:
     parsed_rankings: list  # list of dicts from parse_ranking()
     steered_principle_rank: Optional[int]  # 1-indexed rank, None if not found
     top_principle: Optional[str]
+    effective_scale: Optional[float] = None  # actual scale applied (alpha * norm if norm-relative)
 
 
 @dataclass
@@ -91,6 +98,8 @@ class SteeringResults:
     alphas: list
     n_trials: int = 0
     timestamp: str = ""
+    norm_relative: bool = False
+    resid_norms: dict = field(default_factory=dict)  # layer -> mean ||resid||
     trials: list = field(default_factory=list)
 
 
@@ -331,6 +340,7 @@ def run_steering_experiment(
     max_new_tokens: int = 300,
     raw_directions: bool = False,
     output_suffix: str = "",
+    norm_relative: bool = False,
 ) -> SteeringResults:
     """
     Run the full steering vector experiment.
@@ -343,12 +353,16 @@ def run_steering_experiment(
 
     Args:
         layers: which layers to steer at
-        alphas: steering strengths to test
+        alphas: steering strengths to test (if norm_relative, these are fractions
+                of the mean residual stream L2 norm, e.g. 0.5 = 50% of resid norm)
         device: compute device
         max_cases_per_principle: max test cases per principle
         max_new_tokens: max tokens to generate per response
         raw_directions: skip scaler correction if True
         output_suffix: appended to output directory name (e.g., "_large_alpha")
+        norm_relative: if True, alpha values are interpreted as fractions of the
+                       mean residual stream L2 norm at each layer. E.g., alpha=0.5
+                       means the steering perturbation has L2 norm = 0.5 * ||resid||.
     """
     subdir = "steering" + (f"_{output_suffix}" if output_suffix else "")
     output_path = OUTPUT_DIR / subdir
@@ -359,6 +373,7 @@ def run_steering_experiment(
         layers=layers,
         alphas=alphas,
         timestamp=datetime.now().isoformat(),
+        norm_relative=norm_relative,
     )
 
     # === Phase 1: Extract directions ===
@@ -391,6 +406,24 @@ def run_steering_experiment(
         **directions_cache,
     )
     print(f"Saved directions to {output_path / 'principle_directions.npz'}")
+
+    # Compute mean residual stream norms per layer (for norm-relative scaling)
+    resid_norms = {}
+    if norm_relative:
+        print("\nComputing residual stream norms for norm-relative scaling...")
+        ann_case_ids = {a.case_id for a in annotations}
+        for layer in layers:
+            norms = []
+            for case_id, cache in activations.items():
+                if case_id in ann_case_ids:
+                    norms.append(float(np.linalg.norm(
+                        cache.residual_activations[layer]
+                    )))
+            mean_norm = float(np.mean(norms))
+            resid_norms[layer] = mean_norm
+            print(f"  Layer {layer}: mean ||resid|| = {mean_norm:.2f} "
+                  f"(across {len(norms)} cases)")
+        results.resid_norms = {str(k): v for k, v in resid_norms.items()}
 
     # === Phase 2: Select test cases ===
     print("\n" + "=" * 60)
@@ -439,7 +472,16 @@ def run_steering_experiment(
 
         directions_matrix = layer_data[layer]["directions"]  # (n_principles, d_model)
         r2 = layer_data[layer]["r2_score"]
-        print(f"\n--- Layer {layer} (probe R²={r2:.3f}) ---")
+
+        # Compute effective scale multiplier for norm-relative mode
+        if norm_relative:
+            norm_multiplier = resid_norms[layer]
+            print(f"\n--- Layer {layer} (probe R²={r2:.3f}, "
+                  f"||resid||={norm_multiplier:.0f}, "
+                  f"norm-relative alphas) ---")
+        else:
+            norm_multiplier = 1.0
+            print(f"\n--- Layer {layer} (probe R²={r2:.3f}) ---")
 
         for p_idx, principle in enumerate(PRINCIPLE_NAMES):
             principle_direction = directions_matrix[p_idx]  # (d_model,)
@@ -465,9 +507,18 @@ def run_steering_experiment(
                     rate = trial_count / elapsed if elapsed > 0 else 0
                     eta = (total_trials - trial_count) / rate if rate > 0 else 0
 
-                    print(f"    [{trial_count}/{total_trials}] "
-                          f"case={case_id[:20]}, alpha={alpha:+.1f} "
-                          f"(ETA: {eta/60:.0f}min)", end="")
+                    # Effective scale: alpha * ||resid|| in norm-relative mode
+                    effective_scale = alpha * norm_multiplier
+
+                    if norm_relative:
+                        print(f"    [{trial_count}/{total_trials}] "
+                              f"case={case_id[:20]}, alpha={alpha:+.2f} "
+                              f"(effective={effective_scale:+.0f}, "
+                              f"ETA: {eta/60:.0f}min)", end="")
+                    else:
+                        print(f"    [{trial_count}/{total_trials}] "
+                              f"case={case_id[:20]}, alpha={alpha:+.1f} "
+                              f"(ETA: {eta/60:.0f}min)", end="")
 
                     # Build direction dict for this layer
                     direction_dict = {layer: principle_direction}
@@ -484,7 +535,7 @@ def run_steering_experiment(
                         response = patcher.generate_with_direction_add_all_positions(
                             formatted_prompt,
                             direction_dict,
-                            scale=alpha,
+                            scale=effective_scale,
                             max_new_tokens=max_new_tokens,
                             temperature=0.0,
                         )
@@ -505,6 +556,7 @@ def run_steering_experiment(
                         parsed_rankings=parsed,
                         steered_principle_rank=rank,
                         top_principle=top_principle,
+                        effective_scale=effective_scale,
                     )
                     results.trials.append(asdict(trial))
                     results.n_trials = len(results.trials)
@@ -686,6 +738,11 @@ def main():
         "--output-suffix", type=str, default="",
         help="Suffix for output directory (e.g., 'large_alpha' -> steering_large_alpha/)"
     )
+    parser.add_argument(
+        "--norm-relative", action="store_true",
+        help="Interpret alpha values as fractions of mean residual stream L2 norm. "
+             "E.g., alpha=0.5 means perturbation L2 norm = 50%% of ||resid||."
+    )
 
     args = parser.parse_args()
 
@@ -704,6 +761,7 @@ def main():
     print(f"Max cases per principle: {max_cases}")
     print(f"Device: {args.device}")
     print(f"Scaler correction: {'OFF (raw)' if args.raw_directions else 'ON'}")
+    print(f"Norm-relative: {args.norm_relative}")
 
     run_steering_experiment(
         layers=layers,
@@ -713,6 +771,7 @@ def main():
         max_new_tokens=args.max_new_tokens,
         raw_directions=args.raw_directions,
         output_suffix=args.output_suffix,
+        norm_relative=args.norm_relative,
     )
 
 
