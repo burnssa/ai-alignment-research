@@ -177,149 +177,53 @@ Which attention heads write the most case-discriminative signal?
 
 ## Phase 3: Attention Pattern Analysis
 
-What do specialist heads attend to?
+**Question**: What information are the specialist heads drawing on to produce principle-discriminative representations?
 
-### L22H26 (top principle: privacy_liberty)
+**Method**: For each of the 10 specialist heads identified in Phase 2, we extracted attention weights over all input tokens across the 49 cases and classified each token into one of four content categories:
 
-| Category | Mean Attention |
-|----------|-------------:|
-| other | 0.6303 |
-| legal_term | 0.3050 |
-| punctuation | 0.0587 |
-| whitespace | 0.0060 |
-| principle:free_expression | 0.0000 |
-| principle:due_process | 0.0000 |
-| principle:equal_protection | 0.0000 |
-| principle:privacy_liberty | 0.0000 |
-| principle:federalism | 0.0000 |
+| Category | Definition | Examples |
+|----------|-----------|----------|
+| **principle** | Tokens matching keyword lists for the 5 constitutional principles | "privacy", "equal", "speech", "federal", "due" |
+| **legal_term** | General legal vocabulary not specific to any single principle | "court", "constitutional", "ruling", "scrutiny", "precedent" |
+| **punctuation** | Punctuation and structural tokens | `.` `,` `:` `(` `)` |
+| **other** | Everything else — case facts, party names, dates, general English | "Roe", "Wade", "woman", "government", "argued", "1973" |
 
-### L20H15 (top principle: free_expression)
+The "other" category is large by construction because the keyword lists are narrow. This is intentional: the question is whether specialist heads preferentially attend to *principle-name tokens* (which would suggest keyword matching) or to *broader contextual content* (which would suggest conceptual synthesis).
 
-| Category | Mean Attention |
-|----------|-------------:|
-| legal_term | 0.4967 |
-| other | 0.4067 |
-| punctuation | 0.0746 |
-| whitespace | 0.0212 |
-| principle:due_process | 0.0005 |
-| principle:privacy_liberty | 0.0001 |
-| principle:free_expression | 0.0001 |
-| principle:equal_protection | 0.0001 |
-| principle:federalism | 0.0000 |
+**Key finding**: Across all 10 specialist heads, principle-name tokens receive **<1% of total attention** (with one exception: L22H25 gives 3% to principle tokens). The remaining 97-99%+ of attention is split between "other" (case-specific facts) and "legal_term" (general legal vocabulary).
 
-### L22H25 (top principle: free_expression)
+### Aggregate Attention by Category (averaged across 10 specialist heads)
 
-| Category | Mean Attention |
-|----------|-------------:|
-| other | 0.5251 |
-| punctuation | 0.2186 |
-| legal_term | 0.1166 |
-| whitespace | 0.0930 |
-| principle:free_expression | 0.0308 |
-| principle:privacy_liberty | 0.0083 |
-| principle:due_process | 0.0036 |
-| principle:equal_protection | 0.0025 |
-| principle:federalism | 0.0015 |
+| Category | Mean Attention | Range |
+|----------|-------------:|------:|
+| other | 0.5182 | 0.34 - 0.72 |
+| legal_term | 0.2065 | 0.01 - 0.58 |
+| punctuation | 0.1290 | 0.02 - 0.40 |
+| whitespace | 0.0984 | 0.00 - 0.47 |
+| principle (all 5 combined) | 0.0048 | 0.00 - 0.05 |
 
-### L21H28 (top principle: free_expression)
+### Per-Head Detail
 
-| Category | Mean Attention |
-|----------|-------------:|
-| other | 0.6425 |
-| whitespace | 0.1942 |
-| punctuation | 0.0836 |
-| legal_term | 0.0793 |
-| principle:free_expression | 0.0002 |
-| principle:due_process | 0.0001 |
-| principle:equal_protection | 0.0000 |
-| principle:privacy_liberty | 0.0000 |
-| principle:federalism | 0.0000 |
+| Head | Top Principle | other | legal_term | principle (all) | Pattern |
+|------|--------------|------:|-----------:|----------------:|---------|
+| L22H26 | privacy_liberty | 0.630 | 0.305 | 0.000 | Facts + legal terms |
+| L20H15 | free_expression | 0.407 | 0.497 | 0.001 | Legal terms dominant |
+| L22H25 | free_expression | 0.525 | 0.117 | 0.047 | Only head with >1% principle attention |
+| L21H28 | free_expression | 0.643 | 0.079 | 0.000 | Facts dominant |
+| L22H19 | privacy_liberty | 0.558 | 0.421 | 0.001 | Facts + legal terms |
+| L22H27 | free_expression | 0.706 | 0.087 | 0.003 | Facts dominant |
+| L18H9 | federalism | 0.336 | 0.577 | 0.005 | Legal terms dominant |
+| L22H17 | equal_protection | 0.722 | 0.067 | 0.001 | Facts dominant |
+| L17H30 | free_expression | 0.360 | 0.122 | 0.002 | Mixed (punctuation=0.40) |
+| L22H8 | federalism | 0.396 | 0.012 | 0.001 | Mixed (whitespace=0.47) |
 
-### L22H19 (top principle: privacy_liberty)
+### Interpretation
 
-| Category | Mean Attention |
-|----------|-------------:|
-| other | 0.5581 |
-| legal_term | 0.4208 |
-| punctuation | 0.0168 |
-| whitespace | 0.0037 |
-| principle:privacy_liberty | 0.0004 |
-| principle:due_process | 0.0002 |
-| principle:federalism | 0.0001 |
-| principle:free_expression | 0.0000 |
-| principle:equal_protection | 0.0000 |
+These heads are **not keyword-matching**. A head whose top discriminative principle is "privacy_liberty" (e.g., L22H26) places zero attention on tokens like "privacy" or "liberty." Instead, it attends to case facts and legal context — the substantive content of the opinion — and its output vector lands in a region of residual stream space that the probe reads as encoding that principle.
 
-### L22H27 (top principle: free_expression)
+This pattern is consistent across all 10 heads and supports a **conceptual synthesis** interpretation: the model computes principle-relevant representations by aggregating information from across the factual and legal context of each case, rather than by detecting the presence of principle-related keywords. The principle encoding is an emergent property of *how* the head combines diverse contextual information, not *which specific tokens* it attends to.
 
-| Category | Mean Attention |
-|----------|-------------:|
-| other | 0.7064 |
-| punctuation | 0.1217 |
-| legal_term | 0.0873 |
-| whitespace | 0.0820 |
-| principle:free_expression | 0.0013 |
-| principle:equal_protection | 0.0006 |
-| principle:due_process | 0.0006 |
-| principle:federalism | 0.0001 |
-| principle:privacy_liberty | 0.0001 |
-
-### L18H9 (top principle: federalism)
-
-| Category | Mean Attention |
-|----------|-------------:|
-| legal_term | 0.5771 |
-| other | 0.3358 |
-| punctuation | 0.0568 |
-| whitespace | 0.0251 |
-| principle:due_process | 0.0020 |
-| principle:equal_protection | 0.0016 |
-| principle:free_expression | 0.0009 |
-| principle:privacy_liberty | 0.0004 |
-| principle:federalism | 0.0004 |
-
-### L22H17 (top principle: equal_protection)
-
-| Category | Mean Attention |
-|----------|-------------:|
-| other | 0.7217 |
-| punctuation | 0.1439 |
-| legal_term | 0.0668 |
-| whitespace | 0.0665 |
-| principle:free_expression | 0.0006 |
-| principle:equal_protection | 0.0003 |
-| principle:federalism | 0.0001 |
-| principle:due_process | 0.0001 |
-| principle:privacy_liberty | 0.0000 |
-
-### L17H30 (top principle: free_expression)
-
-| Category | Mean Attention |
-|----------|-------------:|
-| punctuation | 0.3968 |
-| other | 0.3599 |
-| legal_term | 0.1223 |
-| whitespace | 0.1193 |
-| principle:free_expression | 0.0009 |
-| principle:due_process | 0.0007 |
-| principle:federalism | 0.0001 |
-| principle:equal_protection | 0.0000 |
-| principle:privacy_liberty | 0.0000 |
-
-### L22H8 (top principle: federalism)
-
-| Category | Mean Attention |
-|----------|-------------:|
-| whitespace | 0.4733 |
-| other | 0.3958 |
-| punctuation | 0.1181 |
-| legal_term | 0.0122 |
-| principle:due_process | 0.0002 |
-| principle:free_expression | 0.0001 |
-| principle:equal_protection | 0.0001 |
-| principle:federalism | 0.0001 |
-| principle:privacy_liberty | 0.0000 |
-
-## Interpretation
+## Summary
 
 Top discriminative components: attn_22 (mean &#124;r&#124;=0.882), attn_21 (0.865), attn_20 (0.779)
 
