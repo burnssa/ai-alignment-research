@@ -51,8 +51,8 @@ else
 fi
 
 # === Verify activations exist ===
-ACT_DIR="./experiment_output_gemma2_27b/activations/aligned"
-ANN_FILE="./experiment_output_gemma2_27b/annotations.json"
+ACT_DIR="./results/gemma2_27b/activations/aligned"
+ANN_FILE="./data/annotations.json"
 
 if [ ! -d "$ACT_DIR" ]; then
     echo "ERROR: Aligned activations not found at $ACT_DIR"
@@ -84,13 +84,13 @@ echo ""
 echo "Quick test complete! Checking results..."
 echo ""
 
-if [ -f "./experiment_output_gemma2_27b/steering/steering_results.json" ]; then
+if [ -f "./results/gemma2_27b/steering/steering_results.json" ]; then
     echo "Results file exists. Quick test passed."
     echo ""
     # Show trial count
     python -c "
 import json
-with open('./experiment_output_gemma2_27b/steering/steering_results.json') as f:
+with open('./results/gemma2_27b/steering/steering_results.json') as f:
     data = json.load(f)
 print(f'Quick test: {data[\"n_trials\"]} trials completed')
 "
@@ -121,9 +121,9 @@ echo "STEERING EXPERIMENT COMPLETE"
 echo "=============================================="
 echo ""
 echo "Results:"
-echo "  experiment_output_gemma2_27b/steering/steering_results.json"
-echo "  experiment_output_gemma2_27b/steering/steering_summary.md"
-echo "  experiment_output_gemma2_27b/steering/principle_directions.npz"
+echo "  results/gemma2_27b/steering/steering_results.json"
+echo "  results/gemma2_27b/steering/steering_summary.md"
+echo "  results/gemma2_27b/steering/principle_directions.npz"
 echo ""
 echo "To download results from RunPod:"
-echo "  runpodctl receive \${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_gemma2_27b/steering/ ./"
+echo "  runpodctl receive \${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/results/gemma2_27b/steering/ ./"

@@ -191,13 +191,13 @@ def save_results(results: list[dict], output_path: str):
 # Model configurations (same as run_causal_validation.py)
 MODEL_CONFIGS = {
     "gemma2-27b": {
-        "output_dir": "./experiment_output_gemma2_27b",
+        "output_dir": "./results/gemma2_27b",
         "base_model": "google/gemma-2-27b",
         "aligned_model": "google/gemma-2-27b-it",
         "patch_layers": list(range(20, 35)),
     },
     "llama3.2-3b": {
-        "output_dir": "./experiment_output",
+        "output_dir": "./results/llama32_3b",
         "base_model": "meta-llama/Llama-3.2-3B",
         "aligned_model": "meta-llama/Llama-3.2-3B-Instruct",
         "patch_layers": list(range(18, 26)),

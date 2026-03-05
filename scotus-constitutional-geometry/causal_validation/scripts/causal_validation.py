@@ -214,7 +214,11 @@ def load_or_train_directions(
     # Load data and train
     act_dir = Path(output_dir) / "activations" / model_type
     activations = load_activation_dataset(str(act_dir))
-    annotations = load_annotations(str(Path(output_dir) / "annotations.json"))
+    # Try shared annotations first, fall back to per-model
+    ann_path = Path(output_dir).parent.parent / "data" / "annotations.json"
+    if not ann_path.exists():
+        ann_path = Path(output_dir) / "annotations.json"
+    annotations = load_annotations(str(ann_path))
 
     if layers is None:
         first_cache = next(iter(activations.values()))
@@ -676,7 +680,10 @@ def run_patching_experiment(
     aligned_activations = load_activation_dataset(str(aligned_act_dir))
 
     # Load annotations for ground truth
-    annotations = load_annotations(str(Path(output_dir) / "annotations.json"))
+    ann_path = Path(output_dir).parent.parent / "data" / "annotations.json"
+    if not ann_path.exists():
+        ann_path = Path(output_dir) / "annotations.json"
+    annotations = load_annotations(str(ann_path))
     annotation_lookup = {a.case_id: a for a in annotations}
 
     print(f"\nRunning patching experiment on {len(cases)} cases...")

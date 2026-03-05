@@ -34,7 +34,7 @@ from cases import CASES, CASES_PHASE2, ALL_CASES, format_prompt, get_all_case_id
 # === Configuration ===
 
 CONFIG = {
-    "output_dir": "./experiment_output",
+    "output_dir": "./results/llama32_3b",
     "model_pair": "llama2-7b",  # See extract_activations.py for options
     "extraction_method": "last_token",
     "cv_folds": 5,
@@ -425,7 +425,7 @@ def train_and_compare(output_dir: str, cv_folds: int = 5):
 # === Full Pipeline ===
 
 def run_full_experiment(
-    output_dir: str = "./experiment_output",
+    output_dir: str = "./results/llama32_3b",
     model_pair: str = "llama2-7b",
     api_key: str = None,
     skip_fetch: bool = False,
@@ -527,7 +527,7 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="./experiment_output",
+        default="./results/llama32_3b",
         help="Output directory"
     )
     parser.add_argument(

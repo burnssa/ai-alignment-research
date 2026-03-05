@@ -8,7 +8,7 @@ for each model. Uses 200 permutations per test.
 This validates whether the observed R² values are statistically significant
 versus a null distribution where principle labels are shuffled.
 
-Output: experiment_output_<model>/permutation_validation.json for each model.
+Output: results/<model>/permutation_validation.json for each model.
 """
 
 import json
@@ -28,23 +28,23 @@ from train_probes import LinearProbeTrainer, permutation_test
 # Model configurations: best aligned layer from probe_comparison.json summaries
 MODELS = {
     "gemma2_27b": {
-        "dir": "experiment_output_gemma2_27b",
+        "dir": "results/gemma2_27b",
         "best_aligned_layer": 23,
     },
     "llama31_8b": {
-        "dir": "experiment_output_llama31_8b",
+        "dir": "results/llama31_8b",
         "best_aligned_layer": 12,
     },
     "mistral_7b": {
-        "dir": "experiment_output_mistral_7b",
+        "dir": "results/mistral_7b",
         "best_aligned_layer": 26,
     },
     "qwen25_7b": {
-        "dir": "experiment_output_qwen25_7b",
+        "dir": "results/qwen25_7b",
         "best_aligned_layer": 16,
     },
     "qwen25_32b": {
-        "dir": "experiment_output_qwen25_32b",
+        "dir": "results/qwen25_32b",
         "best_aligned_layer": 49,
     },
 }
@@ -69,7 +69,7 @@ def run_all():
         print(f"{'='*70}")
 
         # Load annotations
-        ann_file = exp_dir / "annotations.json"
+        ann_file = PROJECT_DIR / "data" / "annotations.json"
         annotations = load_annotations(str(ann_file))
         print(f"  Loaded {len(annotations)} annotations")
 

@@ -192,17 +192,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Layer-0 ablation analysis")
     parser.add_argument(
         "--activations-dir",
-        default="experiment_output_gemma2_27b/activations/aligned",
+        default="results/gemma2_27b/activations/aligned",
         help="Directory with aligned model activations",
     )
     parser.add_argument(
         "--annotations-file",
-        default="experiment_output_gemma2_27b/annotations.json",
+        default="data/annotations.json",
         help="Path to annotations JSON",
     )
     parser.add_argument(
         "--output",
-        default="behavioral_output_gemma2_27b/decomposition/ablation_results.json",
+        default="results/gemma2_27b/decomposition/ablation_results.json",
         help="Output JSON path",
     )
     args = parser.parse_args()

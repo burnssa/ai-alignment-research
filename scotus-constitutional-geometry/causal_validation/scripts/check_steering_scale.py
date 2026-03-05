@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from extract_activations import load_activation_dataset
 
 # Load activations to check norms
-act_dir = ROOT_DIR / "experiment_output_gemma2_27b" / "activations" / "aligned"
+act_dir = ROOT_DIR / "results" / "gemma2_27b" / "activations" / "aligned"
 activations = load_activation_dataset(str(act_dir))
 
 # Check residual stream norms at layers 20, 23, 26

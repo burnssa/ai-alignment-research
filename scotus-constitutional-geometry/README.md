@@ -144,10 +144,13 @@ python tutorial_activation_probing.py
 ## Output Files
 
 ```
-experiment_output/
+data/
+├── cases/              # SCOTUS case JSON files
 ├── opinions/           # Cached SCOTUS opinion texts
 │   └── *.txt
-├── annotations.json    # Opus-generated principle weights
+└── annotations.json    # Opus-generated principle weights
+
+results/<model>/
 ├── activations/
 │   ├── base/          # Base model activations
 │   │   └── *.npz
@@ -165,7 +168,7 @@ The `annotate_principles.py` module includes a `CrossValidator` class:
 from annotate_principles import CrossValidator, load_annotations
 
 validator = CrossValidator(model="claude-sonnet-4-5-20250514")
-annotations = load_annotations("experiment_output/annotations.json")
+annotations = load_annotations("data/annotations.json")
 
 # Validate Opus annotations with Sonnet
 for annotation in annotations:

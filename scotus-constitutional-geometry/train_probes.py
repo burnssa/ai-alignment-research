@@ -545,10 +545,10 @@ if __name__ == "__main__":
     parser.add_argument("--permutation-test", action="store_true",
                         help="Run permutation test to validate annotations")
     parser.add_argument("--activations-dir", type=str,
-                        default="experiment_output/activations/aligned",
+                        default="results/llama32_3b/activations/aligned",
                         help="Directory containing activation .npz files")
     parser.add_argument("--annotations-file", type=str,
-                        default="experiment_output/annotations.json",
+                        default="data/annotations.json",
                         help="Path to annotations.json")
     parser.add_argument("--layers", type=str, default=None,
                         help="Comma-separated layers to test (default: all)")
@@ -622,7 +622,7 @@ if __name__ == "__main__":
         # Save
         output_path = args.output
         if output_path is None:
-            output_path = str(script_dir / "experiment_output" / "permutation_test.json")
+            output_path = str(script_dir / "results" / "llama32_3b" / "permutation_test.json")
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
         print(f"\nResults saved to {output_path}")

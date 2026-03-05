@@ -1,19 +1,21 @@
 """
 SCOTUS Cases for Constitutional Geometry PoC
 
-Cases are loaded from JSON files in case_data/ directory for easier
+Cases are loaded from JSON files in data/cases/ directory for easier
 inspection and maintenance. Each JSON file represents a phase of the experiment.
 """
 
 import json
 from pathlib import Path
 
+from paths import CASES_DIR
+
 # Get the directory containing case data files
-CASE_DATA_DIR = Path(__file__).parent / "case_data"
+CASE_DATA_DIR = CASES_DIR
 
 
 def _load_cases_from_file(filename: str) -> list:
-    """Load cases from a JSON file in the case_data directory."""
+    """Load cases from a JSON file in the data/cases directory."""
     filepath = CASE_DATA_DIR / filename
     if not filepath.exists():
         raise FileNotFoundError(f"Case file not found: {filepath}")

@@ -12,7 +12,7 @@ Also computes a permutation null: shuffle principle labels, retrain probes,
 compute cosine similarities. This tells us whether the observed base-aligned
 similarity is above chance.
 
-Output: experiment_output_<model>/probe_direction_similarity.json
+Output: results/<model>/probe_direction_similarity.json
 """
 
 import json
@@ -38,23 +38,23 @@ PRINCIPLE_NAMES = [
 
 MODELS = {
     "gemma2_27b": {
-        "dir": "experiment_output_gemma2_27b",
+        "dir": "results/gemma2_27b",
         "best_aligned_layer": 23,
     },
     "llama31_8b": {
-        "dir": "experiment_output_llama31_8b",
+        "dir": "results/llama31_8b",
         "best_aligned_layer": 12,
     },
     "mistral_7b": {
-        "dir": "experiment_output_mistral_7b",
+        "dir": "results/mistral_7b",
         "best_aligned_layer": 26,
     },
     "qwen25_7b": {
-        "dir": "experiment_output_qwen25_7b",
+        "dir": "results/qwen25_7b",
         "best_aligned_layer": 16,
     },
     "qwen25_32b": {
-        "dir": "experiment_output_qwen25_32b",
+        "dir": "results/qwen25_32b",
         "best_aligned_layer": 49,
     },
 }
@@ -167,7 +167,7 @@ def analyze_model(model_key, cfg):
     print(f"{'='*70}")
 
     # Load annotations
-    annotations = load_annotations(str(exp_dir / "annotations.json"))
+    annotations = load_annotations(str(PROJECT_DIR / "data" / "annotations.json"))
     print(f"  Loaded {len(annotations)} annotations")
 
     # Load activations

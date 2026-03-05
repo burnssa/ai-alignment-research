@@ -76,8 +76,9 @@ Your ranking:"""
 
 
 def load_cases():
-    """Load all SCOTUS cases from case_data directory."""
-    case_data_dir = Path(__file__).parent / "case_data"
+    """Load all SCOTUS cases from data/cases directory."""
+    from paths import CASES_DIR
+    case_data_dir = CASES_DIR
 
     all_cases = []
     for json_file in sorted(case_data_dir.glob("*.json")):
@@ -316,11 +317,10 @@ def run_behavioral_verification(
 
 def load_annotation_weights(output_dir: Path) -> dict:
     """Load principle weights from annotations.json if available."""
-    # Try to find annotations in experiment_output or current dir
+    from paths import ANNOTATIONS_FILE
     possible_paths = [
-        Path(__file__).parent / "experiment_output" / "annotations.json",
+        ANNOTATIONS_FILE,
         output_dir / "annotations.json",
-        Path(__file__).parent / "annotations.json",
     ]
 
     for path in possible_paths:
@@ -491,7 +491,7 @@ def main():
         "--output-dir",
         type=str,
         default=None,
-        help="Output directory (default: behavioral_output_{model_pair})"
+        help="Output directory (default: results/{model_key}/)"
     )
     parser.add_argument(
         "--device",
@@ -514,7 +514,17 @@ def main():
 
     args = parser.parse_args()
 
-    output_dir = args.output_dir or f"behavioral_output_{args.model_pair}"
+    if args.output_dir:
+        output_dir = args.output_dir
+    else:
+        from paths import RESULTS_DIR
+        # Map model-pair CLI names to results dir keys
+        _pair_to_key = {
+            "llama3.2-3b": "llama32_3b", "llama3.1-8b": "llama31_8b",
+            "mistral-7b": "mistral_7b", "qwen25-7b": "qwen25_7b",
+            "qwen25-32b": "qwen25_32b", "gemma2-27b": "gemma2_27b",
+        }
+        output_dir = str(RESULTS_DIR / _pair_to_key.get(args.model_pair, args.model_pair))
 
     run_behavioral_verification(
         model_pair_name=args.model_pair,

@@ -164,19 +164,19 @@ From your **local machine**:
 export POD_ID="your-pod-id"
 
 # Download Qwen 7B results
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_qwen25_7b/ ~/Downloads/scotus_qwen_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/results/qwen25_7b/ ~/Downloads/scotus_qwen_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_qwen25_7b/ ~/Downloads/criminal_qwen_results/
 
 # Download Mistral results
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_mistral_7b/ ~/Downloads/scotus_mistral_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/results/mistral_7b/ ~/Downloads/scotus_mistral_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_mistral_7b/ ~/Downloads/criminal_mistral_results/
 
 # Download Qwen 32B results (large model)
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_qwen25_32b/ ~/Downloads/scotus_qwen32b_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/results/qwen25_32b/ ~/Downloads/scotus_qwen32b_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_qwen25_32b/ ~/Downloads/criminal_qwen32b_results/
 
 # Download Gemma 2-27B results (large model)
-runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/experiment_output_gemma2_27b/ ~/Downloads/scotus_gemma27b_results/
+runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/scotus-constitutional-geometry/results/gemma2_27b/ ~/Downloads/scotus_gemma27b_results/
 runpodctl receive ${POD_ID}:/workspace/ai-alignment-research/criminal-planning-geometry/experiment_output_gemma2_27b/ ~/Downloads/criminal_gemma27b_results/
 ```
 

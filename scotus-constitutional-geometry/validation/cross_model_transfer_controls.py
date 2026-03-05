@@ -48,12 +48,12 @@ ALPHAS = [0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
 # Only models with d_model=4096 can be cross-compared
 COMPARABLE_MODELS = {
     "llama31_8b": {
-        "dir": "experiment_output_llama31_8b",
+        "dir": "results/llama31_8b",
         "best_aligned_layer": 12,
         "d_model": 4096,
     },
     "mistral_7b": {
-        "dir": "experiment_output_mistral_7b",
+        "dir": "results/mistral_7b",
         "best_aligned_layer": 26,
         "d_model": 4096,
     },
@@ -61,11 +61,11 @@ COMPARABLE_MODELS = {
 
 # All models for reference (within-model transfer already done)
 ALL_MODELS = {
-    "gemma2_27b": {"dir": "experiment_output_gemma2_27b", "best_aligned_layer": 23, "d_model": 4608},
-    "llama31_8b": {"dir": "experiment_output_llama31_8b", "best_aligned_layer": 12, "d_model": 4096},
-    "mistral_7b": {"dir": "experiment_output_mistral_7b", "best_aligned_layer": 26, "d_model": 4096},
-    "qwen25_7b": {"dir": "experiment_output_qwen25_7b", "best_aligned_layer": 16, "d_model": 3584},
-    "qwen25_32b": {"dir": "experiment_output_qwen25_32b", "best_aligned_layer": 49, "d_model": 5120},
+    "gemma2_27b": {"dir": "results/gemma2_27b", "best_aligned_layer": 23, "d_model": 4608},
+    "llama31_8b": {"dir": "results/llama31_8b", "best_aligned_layer": 12, "d_model": 4096},
+    "mistral_7b": {"dir": "results/mistral_7b", "best_aligned_layer": 26, "d_model": 4096},
+    "qwen25_7b": {"dir": "results/qwen25_7b", "best_aligned_layer": 16, "d_model": 3584},
+    "qwen25_32b": {"dir": "results/qwen25_32b", "best_aligned_layer": 49, "d_model": 5120},
 }
 
 
@@ -158,7 +158,7 @@ def main():
     for mk, cfg in COMPARABLE_MODELS.items():
         exp_dir = PROJECT_DIR / cfg["dir"]
         layer = cfg["best_aligned_layer"]
-        annotations = load_annotations(str(exp_dir / "annotations.json"))
+        annotations = load_annotations(str(PROJECT_DIR / "data" / "annotations.json"))
 
         print(f"\nLoading {mk} (layer {layer})...")
         X_aligned, y_aligned, ids_a = load_data_at_layer(
@@ -304,7 +304,7 @@ def main():
     print(f"    → aligned models share geometry that base models lack")
 
     # Save
-    output_path = PROJECT_DIR / "cross_model_transfer_controls.json"
+    output_path = PROJECT_DIR / "results" / "cross_model" / "cross_model_transfer_controls.json"
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {output_path}")

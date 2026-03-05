@@ -69,8 +69,8 @@ from cases import ALL_CASES, format_prompt
 
 PRINCIPLE_NAMES = LinearProbeTrainer.PRINCIPLE_NAMES
 ALIGNED_MODEL = "google/gemma-2-27b-it"
-DATA_DIR = ROOT_DIR / "experiment_output_gemma2_27b"
-RESULTS_DIR = ROOT_DIR / "behavioral_output_gemma2_27b"
+DATA_DIR = ROOT_DIR / "results" / "gemma2_27b"
+RESULTS_DIR = ROOT_DIR / "results" / "gemma2_27b"
 
 
 # === Core Decomposition Functions ===
@@ -1098,7 +1098,7 @@ def main():
     )
     parser.add_argument(
         "--output-dir", type=str, default=None,
-        help="Output directory (default: behavioral_output_gemma2_27b/decomposition/)",
+        help="Output directory (default: results/gemma2_27b/decomposition/)",
     )
 
     args = parser.parse_args()
@@ -1128,7 +1128,7 @@ def main():
     print("=" * 60)
 
     act_dir = DATA_DIR / "activations" / "aligned"
-    annotations_path = DATA_DIR / "annotations.json"
+    annotations_path = ROOT_DIR / "data" / "annotations.json"
 
     print(f"Loading activations from {act_dir}...")
     activations = load_activation_dataset(str(act_dir))

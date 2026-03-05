@@ -45,8 +45,9 @@ ai-alignment-research/
 │
 ├── scotus-constitutional-geometry/  # Constitutional principle probing experiment
 │   ├── README.md                # Methodology and quick start
-│   ├── experiment_output/       # Results, annotations, activations
-│   │   └── EXPERIMENT_OUTCOMES.md   # Detailed findings and analysis
+│   ├── data/                    # Shared cases, opinions, annotations
+│   ├── results/                 # Per-model results, activations, probes
+│   │   └── llama32_3b/EXPERIMENT_OUTCOMES.md  # Detailed findings
 │   └── *.py                     # Pipeline scripts (annotate, extract, probe)
 │
 ├── criminal-planning-geometry/  # Safety concept probing experiment
@@ -131,7 +132,7 @@ Investigated whether persona-based prompt prefixes (e.g., "You are Einstein") co
 
 ### SCOTUS Constitutional Geometry
 
-**Status:** ✅ Cross-Model Validation Complete | **[View Full Results →](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md)**
+**Status:** ✅ Cross-Model Validation Complete | **[View Full Results →](scotus-constitutional-geometry/results/llama32_3b/EXPERIMENT_OUTCOMES.md)**
 
 Tested whether RLHF creates geometrically measurable value structures in transformer residual streams by probing for constitutional principles in 49 landmark SCOTUS cases across 6 model pairs (Llama 3.2-3B, Llama 3.1-8B, Mistral-7B, Qwen2.5-7B, Qwen2.5-32B, Gemma 2-27B).
 
@@ -148,7 +149,7 @@ Tested whether RLHF creates geometrically measurable value structures in transfo
 - Qwen models show weaker signal (~0.21-0.23), possibly reflecting training data differences
 - Base model structure varies by family, not scale — RLHF/post-training may be needed for conceptual emergence
 
-**Documentation:** See [`scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md`](scotus-constitutional-geometry/experiment_output/EXPERIMENT_OUTCOMES.md) for detailed methodology.
+**Documentation:** See [`scotus-constitutional-geometry/results/llama32_3b/EXPERIMENT_OUTCOMES.md`](scotus-constitutional-geometry/results/llama32_3b/EXPERIMENT_OUTCOMES.md) for detailed methodology.
 
 ---
 

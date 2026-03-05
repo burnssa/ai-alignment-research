@@ -16,7 +16,7 @@ parser.add_argument("--suffix", type=str, default="",
 args = parser.parse_args()
 
 subdir = "steering" + (f"_{args.suffix}" if args.suffix else "")
-results_path = ROOT_DIR / "experiment_output_gemma2_27b" / subdir / "steering_results.json"
+results_path = ROOT_DIR / "results" / "gemma2_27b" / subdir / "steering_results.json"
 
 if not results_path.exists():
     print(f"No results at {results_path}")

@@ -29,8 +29,8 @@ All computed from cached activations — no GPU required.
 Usage:
     python causal_validation/scripts/discriminative_attribution.py
     python causal_validation/scripts/discriminative_attribution.py \
-        --activations-dir experiment_output_gemma2_27b/activations/aligned \
-        --annotations-file experiment_output_gemma2_27b/annotations.json
+        --activations-dir results/gemma2_27b/activations/aligned \
+        --annotations-file data/annotations.json
 """
 
 import argparse
@@ -489,12 +489,12 @@ def main():
     )
     parser.add_argument(
         "--activations-dir",
-        default="experiment_output_gemma2_27b/activations/aligned",
+        default="results/gemma2_27b/activations/aligned",
         help="Directory with aligned model activations",
     )
     parser.add_argument(
         "--annotations-file",
-        default="experiment_output_gemma2_27b/annotations.json",
+        default="data/annotations.json",
         help="Path to annotations JSON",
     )
     parser.add_argument(
@@ -505,7 +505,7 @@ def main():
     )
     parser.add_argument(
         "--output-dir",
-        default="behavioral_output_gemma2_27b/decomposition",
+        default="results/gemma2_27b/decomposition",
         help="Output directory for results",
     )
     args = parser.parse_args()

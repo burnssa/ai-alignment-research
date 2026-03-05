@@ -25,7 +25,7 @@ def truncate(text: str, max_len: int = 500) -> str:
 def main():
     if len(sys.argv) < 2:
         # Default path
-        json_path = Path(__file__).parent / "experiment_output_gemma2_27b" / "causal_validation_patching.json"
+        json_path = Path(__file__).parent.parent.parent / "results" / "gemma2_27b" / "causal_validation_patching.json"
     else:
         json_path = Path(sys.argv[1])
 

@@ -31,27 +31,27 @@ PRINCIPLE_NAMES = [
 
 MODELS = {
     "gemma2_27b": {
-        "dir": "experiment_output_gemma2_27b",
+        "dir": "results/gemma2_27b",
         "best_aligned_layer": 23,
         "n_layers": 46,
     },
     "llama31_8b": {
-        "dir": "experiment_output_llama31_8b",
+        "dir": "results/llama31_8b",
         "best_aligned_layer": 12,
         "n_layers": 32,
     },
     "mistral_7b": {
-        "dir": "experiment_output_mistral_7b",
+        "dir": "results/mistral_7b",
         "best_aligned_layer": 26,
         "n_layers": 32,
     },
     "qwen25_7b": {
-        "dir": "experiment_output_qwen25_7b",
+        "dir": "results/qwen25_7b",
         "best_aligned_layer": 16,
         "n_layers": 28,
     },
     "qwen25_32b": {
-        "dir": "experiment_output_qwen25_32b",
+        "dir": "results/qwen25_32b",
         "best_aligned_layer": 49,
         "n_layers": 64,
     },
@@ -67,7 +67,7 @@ def load_data(model_key: str, variant: str = "aligned"):
     layer = cfg["best_aligned_layer"]
 
     # Load annotations
-    with open(exp_dir / "annotations.json") as f:
+    with open(BASE_DIR / "data" / "annotations.json") as f:
         annotations = json.load(f)
 
     case_map = {}
@@ -330,7 +330,7 @@ def main():
                   f"Δ(A-B)={ra-rb:+.4f}")
 
     # Save
-    output_path = BASE_DIR / "behavioral_output_gemma2_27b" / "cross_model_r2_comparison.json"
+    output_path = BASE_DIR / "results" / "cross_model" / "cross_model_r2_comparison.json"
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {output_path}")

@@ -38,34 +38,34 @@ sys.path.insert(0, str(SCRIPT_DIR))  # for causal_validation.py
 sys.path.insert(0, str(ROOT_DIR))    # for cases.py, extract_activations.py
 
 # Model configurations - ROUND 2: Optimized patch ranges based on max R² layers
-# See causal_validation/output/round1_initial_ranges/README.md for round 1 results
+# See results/gemma2_27b/patching/round1_initial_ranges/README.md for round 1 results
 #
 # NOTE: Gemma-2-27B not included - round 1 patch range (20-34) was already optimal
 # (max R² at layer 23, achieved 100% recovery). Results in round1_initial_ranges/.
 MODEL_CONFIGS = {
     "llama3.2-3b": {
-        "output_dir": "./experiment_output",
+        "output_dir": "./results/llama32_3b",
         "base_model": "meta-llama/Llama-3.2-3B",
         "aligned_model": "meta-llama/Llama-3.2-3B-Instruct",
         "patch_layers": list(range(22, 28)),  # Optimized: max R² at layer 27
         "n_layers": 28,
     },
     "mistral-7b": {
-        "output_dir": "./experiment_output_mistral_7b",
+        "output_dir": "./results/mistral_7b",
         "base_model": "mistralai/Mistral-7B-v0.1",
         "aligned_model": "mistralai/Mistral-7B-Instruct-v0.1",
         "patch_layers": list(range(21, 32)),  # Optimized: max R² at layer 26
         "n_layers": 32,
     },
     "qwen25-7b": {
-        "output_dir": "./experiment_output_qwen25_7b",
+        "output_dir": "./results/qwen25_7b",
         "base_model": "Qwen/Qwen2.5-7B",
         "aligned_model": "Qwen/Qwen2.5-7B-Instruct",
         "patch_layers": list(range(11, 22)),  # Optimized: max R² at layer 16
         "n_layers": 28,
     },
     "llama3.1-8b": {
-        "output_dir": "./experiment_output_llama31_8b",
+        "output_dir": "./results/llama31_8b",
         "base_model": "meta-llama/Llama-3.1-8B",
         "aligned_model": "meta-llama/Llama-3.1-8B-Instruct",
         "patch_layers": list(range(7, 18)),  # Optimized: max R² at layer 12
@@ -356,7 +356,7 @@ def run_all_experiments(
         all_results["models"][model_name] = model_results
 
         # Save intermediate results
-        output_path = Path("causal_validation/output/round2_optimized_ranges/all_models.json")
+        output_path = Path("results/gemma2_27b/patching/round2_optimized_ranges/all_models.json")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w') as f:
             json.dump(all_results, f, indent=2, default=str)
@@ -430,7 +430,7 @@ def main():
     results = run_all_experiments(models, args.device, args.quick)
     print_summary(results)
 
-    print(f"\nFull results saved to: causal_validation/output/round2_optimized_ranges/all_models.json")
+    print(f"\nFull results saved to: results/gemma2_27b/patching/round2_optimized_ranges/all_models.json")
 
 
 if __name__ == "__main__":

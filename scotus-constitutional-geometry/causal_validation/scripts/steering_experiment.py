@@ -69,7 +69,7 @@ except ImportError:
 
 PRINCIPLE_NAMES = LinearProbeTrainer.PRINCIPLE_NAMES  # underscore format
 ALIGNED_MODEL = "google/gemma-2-27b-it"
-OUTPUT_DIR = ROOT_DIR / "experiment_output_gemma2_27b"
+OUTPUT_DIR = ROOT_DIR / "results" / "gemma2_27b"
 
 
 # === Data Classes ===
@@ -382,7 +382,7 @@ def run_steering_experiment(
     print("=" * 60)
 
     act_dir = OUTPUT_DIR / "activations" / "aligned"
-    annotations_path = OUTPUT_DIR / "annotations.json"
+    annotations_path = ROOT_DIR / "data" / "annotations.json"
 
     print(f"Loading activations from {act_dir}...")
     activations = load_activation_dataset(str(act_dir))

@@ -22,29 +22,30 @@ from scipy import stats
 ROOT_DIR = Path(__file__).parent.parent.parent.resolve()
 
 # Models with both probe and behavioral data
+# After restructure, probe and behavioral data are in the same results/ dir
 MODELS = {
     "gemma2-27b": {
-        "probe_dir": "experiment_output_gemma2_27b",
-        "behavioral_dir": "behavioral_output_gemma2_27b",
+        "probe_dir": "results/gemma2_27b",
+        "behavioral_dir": "results/gemma2_27b",
     },
     "llama3.2-3b": {
-        "probe_dir": "experiment_output",  # original experiment_output is llama 3.2
-        "behavioral_dir": "behavioral_output_llama3.2-3b",
+        "probe_dir": "results/llama32_3b",
+        "behavioral_dir": "results/llama32_3b",
     },
     "mistral-7b": {
-        "probe_dir": "experiment_output_mistral_7b",
-        "behavioral_dir": "behavioral_output_mistral_7b",
+        "probe_dir": "results/mistral_7b",
+        "behavioral_dir": "results/mistral_7b",
     },
     "qwen25-7b": {
-        "probe_dir": "experiment_output_qwen25_7b",
-        "behavioral_dir": "behavioral_output_qwen25_7b",
+        "probe_dir": "results/qwen25_7b",
+        "behavioral_dir": "results/qwen25_7b",
     },
 }
 
 # Models with only probe data (for R² comparison)
 PROBE_ONLY_MODELS = {
-    "llama3.1-8b": {"probe_dir": "experiment_output_llama31_8b"},
-    "qwen25-32b": {"probe_dir": "experiment_output_qwen25_32b"},
+    "llama3.1-8b": {"probe_dir": "results/llama31_8b"},
+    "qwen25-32b": {"probe_dir": "results/qwen25_32b"},
 }
 
 PRINCIPLES = ["free_expression", "equal_protection", "due_process",
@@ -118,7 +119,10 @@ def load_probe_data(probe_dir: Path):
 
 def load_annotations(model_dir: Path):
     """Load ground-truth principle weights from annotations."""
-    ann_path = model_dir / "annotations.json"
+    ann_path = ROOT_DIR / "data" / "annotations.json"
+    if not ann_path.exists():
+        # Fallback to per-model dir for backwards compatibility
+        ann_path = model_dir / "annotations.json"
     if not ann_path.exists():
         return {}
 
@@ -575,7 +579,7 @@ def main():
         "n_models_probe_only": len(PROBE_ONLY_MODELS),
     }
 
-    output_path = ROOT_DIR / "causal_validation" / "output" / "probe_behavior_correlation.json"
+    output_path = ROOT_DIR / "results" / "gemma2_27b" / "patching" / "probe_behavior_correlation.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2, default=str)

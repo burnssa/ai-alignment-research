@@ -55,28 +55,28 @@ TARGET_CASES = [
 # Model configurations
 MODEL_CONFIGS = {
     "gemma2-27b": {
-        "output_dir": "./experiment_output_gemma2_27b",
+        "output_dir": "./results/gemma2_27b",
         "base_model": "google/gemma-2-27b",
         "aligned_model": "google/gemma-2-27b-it",
         "patch_layers": list(range(20, 35)),  # Layers 20-34 (mid-to-upper)
         "n_layers": 46,
     },
     "llama3.2-3b": {
-        "output_dir": "./experiment_output",  # Uses default output
+        "output_dir": "./results/llama32_3b",
         "base_model": "meta-llama/Llama-3.2-3B",
         "aligned_model": "meta-llama/Llama-3.2-3B-Instruct",
         "patch_layers": list(range(18, 26)),  # Layers 18-25 (upper layers)
         "n_layers": 28,
     },
     "mistral-7b": {
-        "output_dir": "./experiment_output_mistral_7b",
+        "output_dir": "./results/mistral_7b",
         "base_model": "mistralai/Mistral-7B-v0.1",
         "aligned_model": "mistralai/Mistral-7B-Instruct-v0.1",
         "patch_layers": list(range(18, 28)),  # Layers 18-27
         "n_layers": 32,
     },
     "qwen25-7b": {
-        "output_dir": "./experiment_output_qwen25_7b",
+        "output_dir": "./results/qwen25_7b",
         "base_model": "Qwen/Qwen2.5-7B",
         "aligned_model": "Qwen/Qwen2.5-7B-Instruct",
         "patch_layers": list(range(18, 28)),  # Layers 18-27

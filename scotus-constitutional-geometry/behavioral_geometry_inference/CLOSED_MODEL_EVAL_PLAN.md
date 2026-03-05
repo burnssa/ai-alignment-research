@@ -49,6 +49,6 @@ Can behavioral output features predict internal probe R² (linear probe quality 
 ## Key Reference Files
 
 - `causal_validation/scripts/probe_behavior_correlation.py` — existing N=4 analysis
-- `behavioral_output_*/behavioral_responses.json` — cached behavioral data
-- `experiment_output_*/probe_comparison.json` — probe R² targets
-- `experiment_output_*/annotations.json` — ground-truth principle weights
+- `results/*/behavioral_responses.json` — cached behavioral data
+- `results/*/probe_comparison.json` — probe R² targets
+- `data/annotations.json` — ground-truth principle weights
