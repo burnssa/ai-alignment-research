@@ -1,8 +1,8 @@
 # Norm-Relative Steering Comparisons
 
-**Layer**: 23 | **Mean &#124;&#124;resid&#124;&#124;**: 19,030 | **Source**: `steering_norm_relative/steering_results.json`
+**Layer**: 23 | **Mean ‖resid‖**: 19,030 | **Source**: `steering_norm_relative/steering_results.json`
 
-Alpha values are fractions of the residual stream L2 norm. Alpha=0.1 means the steering perturbation has L2 norm = 10% of &#124;&#124;resid&#124;&#124; (effective scale ~1,903).
+Alpha values are fractions of the residual stream L2 norm. Alpha=0.1 means the steering perturbation has L2 norm = 10% of ‖resid‖ (effective scale ~1,903).
 
 ---
 
@@ -53,19 +53,19 @@ Rank numbers below reflect the model's own numbering in each response. At alpha=
 
 ## The Coherence Cliff
 
-| Alpha | % of &#124;&#124;resid&#124;&#124; | Effective Scale | Parseable Responses | Character |
+| Alpha | % of ‖resid‖ | Effective Scale | Parseable Responses | Character |
 |:-----:|:---:|:--------------:|:-------------------:|-----------|
-| &#177;0.1 | 10% | &#177;1,903 | 24/25 (96%) | Coherent but altered — rankings shift, responses expand, mild formatting degradation |
-| &#177;0.5 | 50% | &#177;9,515 | 0/25 (0%) | Multilingual gibberish — repeating tokens from multiple languages |
-| &#177;1.0 | 100% | &#177;19,030 | 0/25 (0%) | Complete collapse — repeated dashes, zeros, or single tokens |
+| ±0.1 | 10% | ±1,903 | 24/25 (96%) | Coherent but altered — rankings shift, responses expand, mild formatting degradation |
+| ±0.5 | 50% | ±9,515 | 0/25 (0%) | Multilingual gibberish — repeating tokens from multiple languages |
+| ±1.0 | 100% | ±19,030 | 0/25 (0%) | Complete collapse — repeated dashes, zeros, or single tokens |
 
-All previous steering experiments (Rounds 1-4, alpha up to &#177;500 with unit-normalized directions) operated at **<3% of residual norm** — well below the threshold where any effect is observable.
+All previous steering experiments (Rounds 1-4, alpha up to ±500 with unit-normalized directions) operated at **<3% of residual norm** — well below the threshold where any effect is observable.
 
 ---
 
 ## Gibberish Gallery: What Happens Beyond the Cliff
 
-At alpha &#8805; &#177;0.5, the model produces language-like but meaningless output. Strikingly, the failure mode clusters by **which principle direction** was used for steering:
+At alpha ≥ ±0.5, the model produces language-like but meaningless output. Strikingly, the failure mode clusters by **which principle direction** was used for steering:
 
 ### Free Expression direction (alpha = +0.5)
 
@@ -107,7 +107,19 @@ German prefix fragment repeated:
 
 *(Trump v. Hawaii, 1,800 tokens)*
 
-### At alpha = &#177;1.0: Total Collapse
+### Direction-Specific Attractors at Alpha = ±0.5
+
+Each probe direction produces a consistent failure mode at both polarities. The +0.5 and -0.5 attractors differ from each other but are stable across all 5 cases tested per direction.
+
+| Direction | Cases | Alpha = -0.5 | Alpha = +0.5 |
+|-----------|-------|-------------|-------------|
+| Free Expression | Roe, US v. Virginia, Plessy, Gideon, Murphy | `needManufacturer baixarcuitcuit...` Portuguese/Bengali | `putative wounded définition penerbangan...` French/Malay |
+| Equal Protection | Brandenburg, Murphy, NYT v. Sullivan, Roe, Whalen | `sopOro Pariúahighig Parisag圧...` Mixed w/ Japanese | `höher höher höher höher...` Repeated German |
+| Due Process | Eisenstadt, Grutter, US v. Virginia, Murphy, NFIB | `bolehboleh gesund dayalimentos...` German/Spanish/Malay | `isiäisiäisiä SvenskaxFFFFFFFF...` Finnish/Swedish + hex |
+| Federalism | Eisenstadt, Brandenburg, Grutter, US v. Virginia, Citizens United | `ruffle ruffle ruffle保 Bajaj保...` English/Chinese | `ausreichticon अनुसारίας...` German/Hindi/Greek |
+| Privacy/Liberty | Trump v. Hawaii, Brandenburg, NYT v. Sullivan, Grutter, US v. Virginia | `the the the Politique the000000...` Degenerates to zeros | `vertrevertrevertrevertre...` Repeated German prefix |
+
+### At Alpha = ±1.0: Total Collapse
 
 Output reduces to single repeated characters or pure padding:
 
@@ -115,10 +127,9 @@ Output reduces to single repeated characters or pure padding:
 |------|-----------|--------|
 | Roe v. Wade | Free Expression (+1.0) | `--------------------------------------------...` (300 chars of dashes) |
 | Trump v. Hawaii | Privacy/Liberty (-1.0) | `000000000000000000000000000000000000000000...` (300 chars of zeros) |
-| US v. Virginia | Free Expression (-1.0) | `টিটিiletsilets টিটিiletsilets টিiletsilets...` (Bengali + English fragments, 1,649 chars) |
-| US v. Virginia | Free Expression (-0.5) | `needManufacturer baixar baixarcuit baixarcuitcuitcuit...` (Portuguese + Bengali, 1,690 chars) |
+| US v. Virginia | Free Expression (-1.0) | `টিটিiletsilets টিটিiletsilets টিiletsilets...` (Bengali + English fragments) |
 
-**Key observation**: Each probe direction activates a *consistent, direction-specific failure mode* — the same gibberish pattern appears regardless of which case is being analyzed. This suggests the steering vectors are pushing the model into direction-specific attractors in token space.
+**Key observation**: Each probe direction activates a *consistent, direction-specific attractor* — the same failure pattern appears regardless of input case, with +0.5 and -0.5 mapping to distinct attractors. This suggests the steering vectors push the model into fixed regions of token space determined by direction and polarity.
 
 ---
 
@@ -126,7 +137,7 @@ Output reduces to single repeated characters or pure padding:
 
 | Outcome | Count | % |
 |---------|:-----:|:-:|
-| **Appeared** (absent &#8594; ranked) | 11 | 44% |
+| **Appeared** (absent → ranked) | 11 | 44% |
 | Improved (rank went up) | 0 | 0% |
 | Unchanged | 10 | 40% |
 | Worsened (rank went down) | 4 | 16% |
