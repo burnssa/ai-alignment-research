@@ -85,7 +85,7 @@ def run_comparison(
     prompts: list[dict] = None,
     max_tokens: int = 300
 ):
-    """Run comparison across base, patched, and aligned models."""
+    """Run comparison across base, patched, and instruction-tuned models."""
     from causal_validation import ActivationPatcher
 
     prompts = prompts or TEST_PROMPTS
@@ -139,16 +139,16 @@ def run_comparison(
     torch.cuda.empty_cache()
 
     # === Phase 2: Aligned responses ===
-    print(f"\nLoading aligned model: {aligned_model_name}")
+    print(f"\nLoading instruction-tuned model: {aligned_model_name}")
     aligned_patcher = ActivationPatcher(aligned_model_name, device=device)
 
     for i, prompt_info in enumerate(prompts):
         prompt = prompt_info["prompt"]
-        print(f"Generating aligned response for prompt {i+1}...")
+        print(f"Generating instruction-tuned model response for prompt {i+1}...")
         aligned_response = aligned_patcher.generate_response(prompt, max_new_tokens=max_tokens)
         results[i]["aligned_response"] = aligned_response
 
-    # Free aligned model
+    # Free instruction-tuned model
     del aligned_patcher
     gc.collect()
     torch.cuda.empty_cache()

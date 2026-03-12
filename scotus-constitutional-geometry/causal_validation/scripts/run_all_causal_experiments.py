@@ -266,7 +266,7 @@ def run_ood_comparison(
     torch.cuda.empty_cache()
 
     # Phase 2: Aligned
-    print(f"\nLoading aligned model: {config['aligned_model']}")
+    print(f"\nLoading instruction-tuned model: {config['aligned_model']}")
     aligned_patcher = ActivationPatcher(config["aligned_model"], device=device)
 
     for i, prompt_info in enumerate(prompts):

@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--activations-dir",
         default="results/gemma2_27b/activations/aligned",
-        help="Directory with aligned model activations",
+        help="Directory with instruction-tuned model activations",
     )
     parser.add_argument(
         "--annotations-file",

@@ -1,7 +1,7 @@
 """
 Behavioral Verification: Generate Constitutional Principle Rankings
 
-This script generates structured responses from base and aligned models
+This script generates structured responses from base and instruction-tuned models
 for SCOTUS cases, asking them to rank relevant constitutional principles.
 
 The output is designed to be human-readable and directly comparable across models.
@@ -456,7 +456,7 @@ def generate_summary(results: dict, output_dir: Path):
         "```",
         results["responses"][0].get("base_response", {}).get("raw", "(no response)"),
         "```",
-        "\n#### Aligned Model Response:",
+        "\n#### Instruction-Tuned Model Response:",
         "```",
         results["responses"][0].get("aligned_response", {}).get("raw", "(no response)"),
         "```",

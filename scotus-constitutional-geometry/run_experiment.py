@@ -4,7 +4,7 @@ SCOTUS Constitutional Geometry Experiment - Main Runner
 This script orchestrates the full experiment:
 1. Fetch SCOTUS opinion texts from CourtListener
 2. Annotate principles using Claude Opus
-3. Extract activations from base and aligned models  
+3. Extract activations from base and instruction-tuned models
 4. Train linear probes and compare performance
 
 Run with: python run_experiment.py --phase [1|2|3|all]
@@ -288,7 +288,7 @@ def extract_activations_phase(
     use_bfloat16: bool = False
 ):
     """
-    Extract residual stream activations from base and aligned models.
+    Extract residual stream activations from base and instruction-tuned models.
     """
     import torch
     from extract_activations import ActivationExtractor, load_activation_dataset
@@ -335,13 +335,13 @@ def extract_activations_phase(
     else:
         print(f"\n  Base activations already cached ({len(cached_base_ids)} cases)")
 
-    # Extract from aligned model
+    # Extract from instruction-tuned model
     aligned_dir = Path(output_dir) / "activations" / "aligned"
     cached_aligned_ids = {f.stem for f in aligned_dir.glob("*.npz")} if aligned_dir.exists() else set()
     missing_aligned = required_case_ids - cached_aligned_ids
 
     if missing_aligned:
-        print(f"\n--- ALIGNED MODEL: {model_info['aligned']} ---")
+        print(f"\n--- INSTRUCTION-TUNED MODEL: {model_info['aligned']} ---")
         print(f"  Extracting {len(missing_aligned)} missing cases...")
         # Only extract missing cases
         missing_prompts = [p for p in prompts if p["case_id"] in missing_aligned]
@@ -358,7 +358,7 @@ def extract_activations_phase(
             torch.cuda.empty_cache()
         gc.collect()
     else:
-        print(f"\n  Aligned activations already cached ({len(cached_aligned_ids)} cases)")
+        print(f"\n  IT activations already cached ({len(cached_aligned_ids)} cases)")
     
     print("\nActivation extraction complete")
 
@@ -388,7 +388,7 @@ def train_and_compare(output_dir: str, cv_folds: int = 5):
     annotations = load_annotations(output_dir)
     
     print(f"  Base activations: {len(base_activations)} cases")
-    print(f"  Aligned activations: {len(aligned_activations)} cases")
+    print(f"  IT activations: {len(aligned_activations)} cases")
     print(f"  Annotations: {len(annotations)} cases")
     
     # Get number of layers from first cache
@@ -491,18 +491,18 @@ def run_full_experiment(
     print("=" * 60)
     print(f"\nKey findings:")
     print(f"  Best base model R²: {comparison.best_base_r2:.4f} (layer {comparison.best_base_layer})")
-    print(f"  Best aligned model R²: {comparison.best_aligned_r2:.4f} (layer {comparison.best_aligned_layer})")
-    print(f"  RLHF improvement: {comparison.best_aligned_r2 - comparison.best_base_r2:+.4f}")
+    print(f"  Best IT model R²: {comparison.best_aligned_r2:.4f} (layer {comparison.best_aligned_layer})")
+    print(f"  Instruction-tuning improvement: {comparison.best_aligned_r2 - comparison.best_base_r2:+.4f}")
     
     # Interpretation
     if comparison.best_aligned_r2 > comparison.best_base_r2 + 0.05:
-        print("\n  ✓ POSITIVE SIGNAL: Aligned model shows substantially better")
+        print("\n  ✓ POSITIVE SIGNAL: Instruction-tuned model shows substantially better")
         print("    linear separability of constitutional principles.")
     elif comparison.best_aligned_r2 > comparison.best_base_r2:
-        print("\n  ~ WEAK SIGNAL: Small improvement in aligned model.")
+        print("\n  ~ WEAK SIGNAL: Small improvement in instruction-tuned model.")
         print("    May need more data or different methodology.")
     else:
-        print("\n  ✗ NO SIGNAL: Aligned model not better (or worse).")
+        print("\n  ✗ NO SIGNAL: Instruction-tuned model not better (or worse).")
         print("    Consider alternative hypotheses.")
     
     print(f"\nResults saved to: {output_dir}")

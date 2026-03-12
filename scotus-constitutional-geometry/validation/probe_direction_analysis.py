@@ -5,8 +5,9 @@ For each model family, trains Ridge probes separately on base and aligned
 activations, then computes per-principle cosine similarity between the
 learned weight vectors.
 
-This measures whether base and aligned models encode constitutional principles
-in the same directions — without the circularity of the 5-dim projection R².
+This measures whether base and instruction-tuned models encode constitutional
+principles in the same directions — without the circularity of the 5-dim
+projection R².
 
 Also computes a permutation null: shuffle principle labels, retrain probes,
 compute cosine similarities. This tells us whether the observed base-aligned

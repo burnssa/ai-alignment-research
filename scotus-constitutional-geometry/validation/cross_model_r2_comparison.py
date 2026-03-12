@@ -202,9 +202,9 @@ def analyze_variant(X, y, fixed_alpha, label=""):
 def analyze_transfer(X_base, y, aligned_weights, label=""):
     """Apply aligned probe directions to base activations (transfer test).
 
-    This is the strongest test: if aligned models develop new linear structure
-    that base models lack, projecting base activations onto aligned probe
-    directions should give lower R² than projecting aligned activations.
+    This is the strongest test: if instruction-tuned models develop new linear
+    structure that base models lack, projecting base activations onto IT model
+    probe directions should give lower R² than projecting IT model activations.
     """
     return compute_5dim_projection_r2(X_base, y, aligned_weights)
 

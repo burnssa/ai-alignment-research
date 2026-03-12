@@ -2,14 +2,15 @@
 Linear Probe Training for Constitutional Principle Detection
 
 This module trains linear probes to predict principle weights from residual
-stream activations. The core hypothesis: if RLHF creates more linearly
-separable representations of constitutional principles, probes trained on
-aligned models should achieve higher R² than those on base models.
+stream activations. The core hypothesis: if instruction tuning creates more
+linearly separable representations of constitutional principles, probes
+trained on instruction-tuned models should achieve higher R² than those on
+base models.
 
 Key methodology:
 1. For each layer, train a linear regression: activations -> principle_weights
 2. Use cross-validation to avoid overfitting on small datasets
-3. Compare R² between base and aligned models
+3. Compare R² between base and instruction-tuned models
 4. Identify which layers show the strongest effect
 """
 
@@ -48,7 +49,7 @@ class ProbeResult:
 
 @dataclass 
 class ProbeComparison:
-    """Comparison of probe performance between base and aligned models."""
+    """Comparison of probe performance between base and instruction-tuned models."""
     base_results: list[ProbeResult]
     aligned_results: list[ProbeResult]
     
@@ -82,18 +83,18 @@ class ProbeComparison:
         """Generate human-readable summary."""
         lines = [
             "=" * 60,
-            "LINEAR PROBE COMPARISON: Base vs Aligned Model",
+            "LINEAR PROBE COMPARISON: Base vs Instruction-Tuned",
             "=" * 60,
             "",
             f"Best Base Model Performance:",
             f"  Layer {self.best_base_layer}: R² = {self.best_base_r2:.4f}",
             "",
-            f"Best Aligned Model Performance:",
+            f"Best Instruction-Tuned Model Performance:",
             f"  Layer {self.best_aligned_layer}: R² = {self.best_aligned_r2:.4f}",
             "",
-            f"Improvement from RLHF: {self.best_aligned_r2 - self.best_base_r2:+.4f}",
+            f"Improvement from instruction tuning: {self.best_aligned_r2 - self.best_base_r2:+.4f}",
             "",
-            "Layer-by-layer R² difference (aligned - base):",
+            "Layer-by-layer R² difference (IT - base):",
         ]
         
         for i, diff in enumerate(self.r2_difference_by_layer):
@@ -305,14 +306,14 @@ def compare_models(
     cv_folds: int = 5
 ) -> ProbeComparison:
     """
-    Compare linear probe performance between base and aligned models.
-    
-    This is the main experiment: does RLHF improve linear separability
-    of constitutional principles?
-    
+    Compare linear probe performance between base and instruction-tuned models.
+
+    This is the main experiment: does instruction tuning improve linear
+    separability of constitutional principles?
+
     Args:
         base_activations: case_id -> ActivationCache for base model
-        aligned_activations: case_id -> ActivationCache for aligned model
+        aligned_activations: case_id -> ActivationCache for IT model
         annotations: List of PrincipleAnnotation
         n_layers: Number of layers to probe
         cv_folds: Cross-validation folds
@@ -328,7 +329,7 @@ def compare_models(
     base_results = trainer.train_all_layers(base_activations, annotations, n_layers)
     
     print("\n" + "=" * 50)
-    print("Training probes on ALIGNED model...")
+    print("Training probes on INSTRUCTION-TUNED model...")
     print("=" * 50)
     aligned_results = trainer.train_all_layers(aligned_activations, annotations, n_layers)
     
@@ -488,7 +489,7 @@ def save_comparison(comparison: ProbeComparison, filepath: str):
 
 def plot_layer_comparison(comparison: ProbeComparison, output_path: Optional[str] = None):
     """
-    Plot R² by layer for base vs aligned models.
+    Plot R² by layer for base vs instruction-tuned models.
     
     Requires matplotlib.
     """
@@ -508,7 +509,7 @@ def plot_layer_comparison(comparison: ProbeComparison, output_path: Optional[str
     
     # Top plot: R² by layer
     ax1.plot(layers, base_r2, 'b-o', label='Base Model', markersize=4)
-    ax1.plot(layers, aligned_r2, 'r-o', label='Aligned Model', markersize=4)
+    ax1.plot(layers, aligned_r2, 'r-o', label='Instruction-Tuned', markersize=4)
     ax1.set_xlabel('Layer')
     ax1.set_ylabel('Cross-validated R²')
     ax1.set_title('Linear Probe Performance: Constitutional Principle Prediction')
@@ -522,8 +523,8 @@ def plot_layer_comparison(comparison: ProbeComparison, output_path: Optional[str
     ax2.bar(layers, diff, color=colors, alpha=0.7)
     ax2.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
     ax2.set_xlabel('Layer')
-    ax2.set_ylabel('R² Difference (Aligned - Base)')
-    ax2.set_title('RLHF Effect by Layer (Green = Improvement)')
+    ax2.set_ylabel('R² Difference (IT - Base)')
+    ax2.set_title('Instruction-Tuning Effect by Layer (Green = Improvement)')
     ax2.grid(True, alpha=0.3)
     
     plt.tight_layout()

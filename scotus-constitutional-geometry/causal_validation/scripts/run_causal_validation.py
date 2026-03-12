@@ -142,10 +142,10 @@ def run_experiment(model_name: str, device: str, max_cases: int = None, experime
         return results
 
     elif experiment_type == "ablation":
-        # Run ablation experiment on aligned model
+        # Run ablation experiment on instruction-tuned model
         print("\nRunning ABLATION experiment (testing necessity)...")
 
-        # Load directions from aligned model probes
+        # Load directions from instruction-tuned model probes
         directions = load_or_train_directions(output_dir, model_type="aligned")
 
         patcher = ActivationPatcher(config["aligned_model"], device=device)

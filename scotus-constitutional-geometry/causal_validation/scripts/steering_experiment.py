@@ -12,7 +12,7 @@ ranking free expression higher?
 Methodology:
 - Extract principle directions from trained probes (with scaler correction)
 - For each principle, select cases where it has low ground-truth weight
-- Steer the aligned model by adding the principle direction at varying alphas
+- Steer the instruction-tuned model by adding the principle direction at varying alphas
 - Measure whether the steered principle's rank shifts monotonically with alpha
 
 Usage:
@@ -345,9 +345,9 @@ def run_steering_experiment(
     """
     Run the full steering vector experiment.
 
-    1. Load aligned model activations and annotations
+    1. Load instruction-tuned model activations and annotations
     2. Extract scaler-corrected principle directions
-    3. Load aligned model via TransformerLens
+    3. Load instruction-tuned model via TransformerLens
     4. For each layer x principle x case x alpha: generate steered response
     5. Save results incrementally
 

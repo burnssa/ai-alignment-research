@@ -80,10 +80,10 @@ class ActivationExtractor:
     """
     Extract residual stream activations from transformer models.
     
-    Supports both base and RLHF-aligned model variants for comparison.
+    Supports both base and instruction-tuned model variants for comparison.
     """
     
-    # Common model pairs (base, aligned)
+    # Common model pairs (base, instruction-tuned)
     MODEL_PAIRS = {
         # Llama 2 - well-supported by TransformerLens
         "llama2-7b": {
@@ -126,7 +126,7 @@ class ActivationExtractor:
         },
         "pythia-6.9b": {
             "base": "EleutherAI/pythia-6.9b",
-            "aligned": "EleutherAI/pythia-6.9b"  # No official aligned version
+            "aligned": "EleutherAI/pythia-6.9b"  # No official IT version
         },
         # Smaller models for testing
         "pythia-410m": {
@@ -135,7 +135,7 @@ class ActivationExtractor:
         },
         "gpt2-medium": {
             "base": "gpt2-medium",
-            "aligned": "gpt2-medium"  # No aligned version
+            "aligned": "gpt2-medium"  # No IT version
         }
     }
     
@@ -373,7 +373,7 @@ def compare_model_activations(
     case_ids: list[str]
 ) -> dict:
     """
-    Load and compare activations between base and aligned models.
+    Load and compare activations between base and instruction-tuned models.
     
     Returns summary statistics about differences.
     """
@@ -423,7 +423,7 @@ if __name__ == "__main__":
     for name, pair in ActivationExtractor.MODEL_PAIRS.items():
         print(f"  {name}:")
         print(f"    base: {pair['base']}")
-        print(f"    aligned: {pair['aligned']}")
+        print(f"    instruction-tuned: {pair['aligned']}")
     
     print("\nUsage:")
     print("  extractor = ActivationExtractor('gpt2-medium')")

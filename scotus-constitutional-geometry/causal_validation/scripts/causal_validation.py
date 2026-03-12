@@ -6,8 +6,8 @@ is causally relevant to model behavior. We use activation patching to answer:
 "If we transplant geometry from aligned→base, does behavior change?"
 
 Key experiments:
-1. Activation patching: Replace base model activations with aligned model's
-2. Ablation: Zero out principle-encoding directions in aligned model
+1. Activation patching: Replace base model activations with IT model's
+2. Ablation: Zero out principle-encoding directions in instruction-tuned model
 3. Steering: Add principle direction vectors to shift model behavior
 
 Methodology based on:
@@ -653,13 +653,13 @@ def run_patching_experiment(
 
     For each case:
     1. Generate response with base model (unpatched)
-    2. Generate response with aligned model (for comparison)
-    3. Generate response with base model + aligned activations patched in
+    2. Generate response with instruction-tuned model (for comparison)
+    3. Generate response with base model + IT model activations patched in
     4. Compare principle identification across conditions
 
     Args:
         base_model_name: HuggingFace model name for base model
-        aligned_model_name: HuggingFace model name for aligned model
+        aligned_model_name: HuggingFace model name for instruction-tuned model
         output_dir: Directory with activations and annotations
         cases: List of case dicts with case_id, case_name, etc.
         patch_layers: Which layers to patch
@@ -690,10 +690,10 @@ def run_patching_experiment(
     print(f"Patch layers: {patch_layers}")
     print("=" * 60)
 
-    # === PHASE 1: Generate aligned model responses ===
-    # Load aligned model first, generate all responses, then free memory
-    print(f"\n--- PHASE 1: Generating aligned model responses ---")
-    print(f"Loading aligned model: {aligned_model_name}")
+    # === PHASE 1: Generate instruction-tuned model responses ===
+    # Load IT model first, generate all responses, then free memory
+    print(f"\n--- PHASE 1: Generating instruction-tuned model responses ---")
+    print(f"Loading instruction-tuned model: {aligned_model_name}")
     aligned_patcher = ActivationPatcher(aligned_model_name, device=device)
 
     aligned_responses = {}
@@ -710,8 +710,8 @@ def run_patching_experiment(
         print(f"  [{i+1}/{len(cases)}] {case_name[:40]}...")
         aligned_responses[case_id] = aligned_patcher.generate_response(prompt, max_new_tokens=300)
 
-    # Free aligned model memory
-    print("\nFreeing aligned model memory...")
+    # Free IT model memory
+    print("\nFreeing instruction-tuned model memory...")
     del aligned_patcher
     gc.collect()
     torch.cuda.empty_cache()
@@ -743,7 +743,7 @@ def run_patching_experiment(
 
         aligned_cache = aligned_activations[case_id]
 
-        # Prepare patch activations (aligned model's residual stream)
+        # Prepare patch activations (instruction-tuned model's residual stream)
         patch_acts = {
             layer: aligned_cache.residual_activations[layer]
             for layer in patch_layers

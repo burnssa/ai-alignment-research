@@ -20,7 +20,7 @@ act_dir = ROOT_DIR / "results" / "gemma2_27b" / "activations" / "aligned"
 activations = load_activation_dataset(str(act_dir))
 
 # Check residual stream norms at layers 20, 23, 26
-print("=== Residual Stream Norms (aligned model) ===")
+print("=== Residual Stream Norms (instruction-tuned model) ===")
 print()
 for layer in [20, 23, 26]:
     norms = []

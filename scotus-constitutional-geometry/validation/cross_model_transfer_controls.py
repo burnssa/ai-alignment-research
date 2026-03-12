@@ -299,9 +299,9 @@ def main():
     print(f"  - If cross-model aligned→aligned ≈ within-model aligned→base:")
     print(f"    → drop is model-specific, not alignment-specific")
     print(f"  - If cross-model aligned→aligned >> within-model aligned→base:")
-    print(f"    → alignment creates shared structure across model families")
+    print(f"    → instruction tuning creates shared structure across model families")
     print(f"  - If cross-model aligned→aligned >> cross-model aligned→base:")
-    print(f"    → aligned models share geometry that base models lack")
+    print(f"    → instruction-tuned models share geometry that base models lack")
 
     # Save
     output_path = PROJECT_DIR / "results" / "cross_model" / "cross_model_transfer_controls.json"
