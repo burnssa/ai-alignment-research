@@ -2,12 +2,12 @@
 
 ## Overview
 
-This document summarizes causal validation experiments testing whether activation geometry discovered via linear probing is **causally relevant** to aligned constitutional reasoning behavior.
+This document summarizes causal validation experiments testing whether activation geometry discovered via linear probing is **causally relevant** to instruction-tuned constitutional reasoning behavior.
 
 Two complementary approaches were tested:
 
-1. **Activation Patching**: Replace residual stream activations from aligned model into base model at specific layers during inference, measuring whether this recovers aligned behavior.
-2. **Activation Steering**: Add scaled probe-derived principle directions to the aligned model's residual stream during inference, measuring whether this shifts which constitutional principles the model invokes.
+1. **Activation Patching**: Replace residual stream activations from the IT model into the base model at specific layers during inference, measuring whether this recovers IT behavior.
+2. **Activation Steering**: Add scaled probe-derived principle directions to the IT model's residual stream during inference, measuring whether this shifts which constitutional principles the model invokes.
 
 ---
 
@@ -15,7 +15,7 @@ Two complementary approaches were tested:
 
 ### Constitutional Case Patching (In-Distribution)
 
-| Model | Size | Layers Patched | Base | Aligned | Patched | Recovery Rate |
+| Model | Size | Layers Patched | Base | IT | Patched | Recovery Rate |
 |-------|------|----------------|------|---------|---------|---------------|
 | **Gemma-2** | 27B | 20-34 | 8.3% | 83.3% | 83.3% | **100%** |
 | Llama-3.2 | 3B | 14-24 | 0.0% | 83.3% | 0.0% | 0% |
@@ -23,11 +23,11 @@ Two complementary approaches were tested:
 | Mistral | 7B | 16-28 | 8.3% | 58.3% | 8.3% | 0% |
 | **Qwen-2.5** | 7B | 16-28 | **75.0%** | 58.3% | **83.3%** | N/A* |
 
-*Qwen's base model outperforms its aligned model, inverting the expected pattern.
+*Qwen's base model outperforms its IT model, inverting the expected pattern.
 
 ### Response Behavior by Model
 
-| Model | Base Response | Patched Response | Aligned Response |
+| Model | Base Response | Patched Response | IT Response |
 |-------|--------------|------------------|------------------|
 | Gemma-2-27B | `<eos>` (no output) | Coherent legal analysis | Coherent legal analysis |
 | Llama-3.2-3B | `<\|end_of_text\|>` | `<\|end_of_text\|>` | Coherent legal analysis |
@@ -37,7 +37,7 @@ Two complementary approaches were tested:
 
 ### OOD Generalization (Novel Constitutional Prompts)
 
-| Model | Base Coherent | Patched Coherent | Aligned Coherent | Notes |
+| Model | Base Coherent | Patched Coherent | IT Coherent | Notes |
 |-------|---------------|------------------|------------------|-------|
 | Gemma-2-27B | 0/6 | 0/6 | 6/6 | Patching produces accounting gibberish |
 | Llama-3.2-3B | 6/6 | 6/6 | 6/6 | Base produces repetitive but coherent text |
@@ -70,8 +70,8 @@ Two complementary approaches were tested:
 | Mistral-7B | None (outputs web scrape artifacts) |
 | **Qwen-2.5-7B** | **Strong** (75% accuracy) |
 
-### Pattern 4: Alignment Effect Direction
-| Model | Alignment Effect |
+### Pattern 4: Instruction-Tuning Effect Direction
+| Model | IT Effect |
 |-------|-----------------|
 | Gemma-2 | +75% (creates capability) |
 | Llama-3.2 | +83% (creates capability) |
@@ -85,10 +85,10 @@ Two complementary approaches were tested:
 
 ### Framework 1: Activation Geometry is Model-Family Specific
 The geometric structure we found via probing may be organized differently across model families:
-- **Gemma**: Alignment creates separable geometry at layers 20-34 that is directly patchable
-- **Llama**: Alignment creates capability but geometry is distributed differently (not captured by our layer range)
+- **Gemma**: Instruction tuning creates separable geometry at layers 20-34 that is directly patchable
+- **Llama**: Instruction tuning creates capability but geometry is distributed differently (not captured by our layer range)
 - **Mistral**: Geometry may exist but requires different patching approach
-- **Qwen**: Geometry exists in base model (pre-training effect, not RLHF effect)
+- **Qwen**: Geometry exists in base model (pre-training effect, not instruction-tuning effect)
 
 **Implication**: Linear probes find structure, but that structure's causal role varies by architecture.
 
@@ -96,7 +96,7 @@ The geometric structure we found via probing may be organized differently across
 Activation patching may require sufficient model capacity:
 - 27B parameters: Rich enough representations to transfer cleanly
 - 7-8B parameters: Representations too entangled/compressed for naive patching
-- 3B parameters: Insufficient capacity for separable alignment representations
+- 3B parameters: Insufficient capacity for separable IT representations
 
 **Implication**: Causal interpretability techniques may only work above certain scale thresholds.
 
@@ -107,10 +107,10 @@ The "alignment" being measured conflates two capabilities:
 
 | Model | Instruction-Following Source | Constitutional Reasoning Source |
 |-------|------------------------------|--------------------------------|
-| Gemma | RLHF | RLHF |
-| Llama | RLHF | RLHF |
-| Mistral | RLHF | RLHF (weak) |
-| Qwen | RLHF | **Pre-training** |
+| Gemma | Instruction tuning | Instruction tuning |
+| Llama | Instruction tuning | Instruction tuning |
+| Mistral | Instruction tuning | Instruction tuning (weak) |
+| Qwen | Instruction tuning | **Pre-training** |
 
 **Implication**: Qwen's pre-training included substantial legal/constitutional text, making it capable without instruction-tuning.
 
@@ -153,9 +153,9 @@ Patching activations may cause interference effects:
 
 ## Activation Steering Experiments (Gemma 2-27B)
 
-Given that activation patching recovered aligned behavior for Gemma 2-27B, we next tested whether the probe-derived principle directions could *steer* model outputs — i.e., whether adding a scaled "free expression" direction to activations on a case where free expression is irrelevant would cause the model to rank that principle higher.
+Given that activation patching recovered IT behavior for Gemma 2-27B, we next tested whether the probe-derived principle directions could *steer* model outputs — i.e., whether adding a scaled "free expression" direction to activations on a case where free expression is irrelevant would cause the model to rank that principle higher.
 
-**Method**: Extract per-principle direction vectors from trained Ridge probes (with scaler correction), select test cases where the target principle has low ground-truth weight, then add the scaled direction to the aligned model's residual stream during autoregressive generation. Measure whether the steered principle's rank shifts monotonically with the scaling factor (alpha). All generation used temperature 0.0 for deterministic outputs.
+**Method**: Extract per-principle direction vectors from trained Ridge probes (with scaler correction), select test cases where the target principle has low ground-truth weight, then add the scaled direction to the IT model's residual stream during autoregressive generation. Measure whether the steered principle's rank shifts monotonically with the scaling factor (alpha). All generation used temperature 0.0 for deterministic outputs.
 
 ### Experiment Rounds
 
@@ -236,7 +236,7 @@ The consistency of these attractors across input cases suggests the steering vec
 
 The norm-relative steering results, combined with the patching results, reveal a coherent picture of how probe directions relate to model behavior:
 
-- **Patching works**: Wholesale replacement of activations at layers 20-34 recovers aligned behavior in the base model (100% recovery rate). This confirms the relevant information *lives* in those layer representations.
+- **Patching works**: Wholesale replacement of activations at layers 20-34 recovers IT behavior in the base model (100% recovery rate). This confirms the relevant information *lives* in those layer representations.
 - **Steering works within a narrow window**: At 10% of residual norm, probe directions cause the targeted principle to *appear* in 44% of cases where it was absent at baseline, and can successfully suppress principles in some cases. The effect is real but constrained — principles appear at low ranks (3-6) and are never promoted above their baseline rank.
 - **Previous null results were a scaling artifact**: Rounds 1-4 operated at <3% of residual norm. The perturbation was simply too small relative to the activation magnitudes to influence generation.
 
@@ -255,9 +255,9 @@ The probe directions are **partially causal** rather than purely epiphenomenal: 
 
 ### What We Cannot Claim
 1. ❌ Universal causal role of activation geometry (patching only works for Gemma)
-2. ❌ RLHF creates constitutional reasoning (Qwen has it without alignment)
+2. ❌ Instruction tuning creates constitutional reasoning (Qwen has it without instruction tuning)
 3. ❌ Activation patching as general interpretability technique (highly model-specific)
 4. ❌ Fine-grained rank control via probe directions (principles appear but are never promoted above baseline rank)
 
 ### Revised Thesis
-> The constitutional geometry discovered via linear probing represents a **model-specific** encoding of value-relevant information. Its causal role in producing aligned behavior depends on architecture, scale, and the interaction between patched representations and downstream model computations. For Gemma-2-27B, wholesale activation patching recovers aligned behavior (100% in-distribution), confirming the information resides in those layers. Probe-derived steering vectors are partially causal: at norm-appropriate scale (~10% of residual stream norm), they control whether principles appear in model output (44% appearance rate), but cannot override the model's ranking prior. This indicates the directions encode principle *salience* rather than principle *importance*, and the causal mechanism for ranking involves distributed interactions beyond a single linear direction.
+> The constitutional geometry discovered via linear probing represents a **model-specific** encoding of value-relevant information. Its causal role in producing aligned behavior depends on architecture, scale, and the interaction between patched representations and downstream model computations. For Gemma-2-27B, wholesale activation patching recovers IT behavior (100% in-distribution), confirming the information resides in those layers. Probe-derived steering vectors are partially causal: at norm-appropriate scale (~10% of residual stream norm), they control whether principles appear in model output (44% appearance rate), but cannot override the model's ranking prior. This indicates the directions encode principle *salience* rather than principle *importance*, and the causal mechanism for ranking involves distributed interactions beyond a single linear direction.
