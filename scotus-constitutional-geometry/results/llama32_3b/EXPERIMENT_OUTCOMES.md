@@ -12,20 +12,20 @@
 
 ### Key Metrics
 
-| Model | Best Layer | Best R² | Post-train Δ | Perm. p-value | Interpretation |
-|-------|------------|---------|--------|---------------|----------------|
-| Llama-3.2-3B (base) | Layer 6 | -0.25 | — | n.s. | No linear encoding detected |
-| Llama-3.2-3B-Instruct | Layer 27 | +0.49 | **+0.74** | **p=0.000** | Strong IT effect |
-| Llama-3.1-8B (base) | Layer 30 | +0.24 | — | p=0.240 | **Positive encoding pre-IT** |
-| Llama-3.1-8B-Instruct | Layer 12 | +0.41 | **+0.18** | **p=0.005** | Moderate IT effect |
-| Mistral-7B (base) | Layer 15 | +0.26 | — | p=0.240 | Similar to 8B Llama base |
-| Mistral-7B-Instruct | Layer 26 | +0.40 | **+0.14** | **p=0.000** | Consistent with Llama |
-| Qwen2.5-7B (base) | Layer 3 | **-0.14** | — | p=0.645 | Weak negative encoding |
-| Qwen2.5-7B-Instruct | Layer 16 | **+0.23** | **+0.37** | **p=0.005** | **Weaker signal, larger delta** |
-| Qwen2.5-32B (base) | Layer 29 | +0.06 | — | p=0.415 | Near-zero at scale |
-| Qwen2.5-32B-Instruct | Layer 49 | +0.21 | **+0.14** | p=0.200 | Weak signal persists at scale |
-| **Gemma-2-27B (base)** | Layer 11 | **+0.04** | — | p=0.745 | **Near-zero despite 27B scale** |
-| **Gemma-2-27B-it** | Layer 23 | **+0.48** | **+0.43** | **p=0.000** | **Matches 3B IT!** |
+| Model | Best Layer | Best R² | IT Δ | Perm. p-value |
+|-------|------------|---------|--------|---------------|
+| Llama-3.2-3B (base) | Layer 6 | -0.25 | — | n.s. |
+| Llama-3.2-3B-Instruct | Layer 27 | +0.49 | **+0.74** | **p=0.000** |
+| Llama-3.1-8B (base) | Layer 30 | +0.24 | — | p=0.240 |
+| Llama-3.1-8B-Instruct | Layer 12 | +0.41 | **+0.18** | **p=0.005** |
+| Mistral-7B (base) | Layer 15 | +0.26 | — | p=0.240 |
+| Mistral-7B-Instruct | Layer 26 | +0.40 | **+0.14** | **p=0.000** |
+| Qwen2.5-7B (base) | Layer 3 | **-0.14** | — | p=0.645 |
+| Qwen2.5-7B-Instruct | Layer 16 | **+0.23** | **+0.37** | **p=0.005** |
+| Qwen2.5-32B (base) | Layer 29 | +0.06 | — | p=0.415 |
+| Qwen2.5-32B-Instruct | Layer 49 | +0.21 | **+0.14** | p=0.200 |
+| **Gemma-2-27B (base)** | Layer 11 | **+0.04** | — | p=0.745 |
+| **Gemma-2-27B-it** | Layer 23 | **+0.48** | **+0.43** | **p=0.000** |
 
 > **Robustness note on R² and permutation p-values**: The R² column reports cross-validated R² from Ridge regression (5-fold CV, RidgeCV alpha selection). With 49 samples and 3072–5120 features, R² operates in a severely underdetermined regime (n << p) where absolute values are sensitive to compute environment (BLAS/LAPACK backend). We validated the Llama 3.2-3B values as perfectly reproducible across environments (Pearson r = 1.000 between original and re-run layer curves); RunPod-generated models show stable IT curve *shapes* (Pearson r = 0.89–0.96) with absolute shifts of ~0.3–0.6. The **Perm. p-value** column provides an environment-independent validation: each model's R² was compared against a null distribution of 200 label-shuffled permutations. Instruction-tuned models significantly exceed their null (4/5 families at p ≤ 0.005); no base model reaches significance. The R² values should be read as directional indicators of effect strength — the permutation p-values confirm which effects are statistically real. See the Phase 6 validation section for full details.
 >
@@ -533,7 +533,7 @@ The 8B IT model peaks earlier (layer 12 vs 27), but both achieve R² in the 0.4-
 
 ### Key Finding 3: Instruction-Tuning Effect Dramatically Reduced in Larger Model
 
-| Model Size | Base R² | IT R² | Post-train Δ |
+| Model Size | Base R² | IT R² | IT Δ |
 |------------|---------|------------|--------|
 | **3B** | -0.25 | +0.49 | **+0.74** |
 | **8B** | +0.24 | +0.41 | **+0.18** |
@@ -546,7 +546,7 @@ The instruction-tuning-attributable improvement drops by **75%** (from +0.74 to 
 
 At the best IT layer (Layer 12):
 
-| Principle | Base R² | IT R² | Post-train Δ |
+| Principle | Base R² | IT R² | IT Δ |
 |-----------|---------|------------|--------|
 | Equal Protection | +0.21 | **+0.53** | +0.32 |
 | Privacy/Liberty | +0.37 | **+0.57** | +0.20 |
@@ -577,7 +577,7 @@ At the best IT layer (Layer 12):
 
 Our parallel criminal planning experiment with Llama-3.1-8B showed similarly modest instruction-tuning effects:
 
-| Domain | Best Base R² | Best IT R² | Post-train Δ |
+| Domain | Best Base R² | Best IT R² | IT Δ |
 |--------|-------------|-----------------|--------|
 | SCOTUS (8B) | +0.24 | +0.41 | +0.18 |
 | Criminal Planning (8B) | +0.50 | +0.52 | +0.02 |
@@ -625,7 +625,7 @@ Mistral-7B shows nearly identical results to Llama-3.1-8B:
 |--------|----------|------------|
 | Best Base R² | +0.24 (L30) | +0.26 (L15) |
 | Best IT R² | +0.41 (L12) | +0.40 (L26) |
-| Post-train Δ | +0.18 | +0.14 |
+| IT Δ | +0.18 | +0.14 |
 
 **Interpretation**: Constitutional principle encoding generalizes across Western-trained models. The ~0.40 IT R² appears to be a consistent ceiling.
 
@@ -639,7 +639,7 @@ Qwen2.5-7B shows dramatically different results:
 |--------|---------------|------|
 | Best Base R² | +0.24 to +0.26 | **-0.14** |
 | Best IT R² | +0.40 to +0.41 | **+0.23** |
-| Post-train Δ | +0.14 to +0.18 | **+0.37** |
+| IT Δ | +0.14 to +0.18 | **+0.37** |
 
 **Key observations**:
 - Qwen base model shows **negative** R² (worse than random), unlike Llama/Mistral base models
@@ -718,7 +718,7 @@ After Phase 4 revealed the 8B base model already encodes constitutional principl
 
 **Critical result**: Gemma 2-27B (27B parameters) shows near-zero base structure, matching the much smaller Llama 3.2-3B (3B parameters):
 
-| Model | Scale | Base R² | IT R² | Post-train Δ |
+| Model | Scale | Base R² | IT R² | IT Δ |
 |-------|-------|---------|------------|--------|
 | Llama 3.2-3B | 3B | -0.24 | +0.49 | +0.73 |
 | **Gemma 2-27B** | **27B** | **+0.04** | **+0.48** | **+0.43** |
@@ -739,7 +739,7 @@ Qwen2.5-32B shows similar patterns to Qwen2.5-7B — weaker overall signal:
 |--------|---------|----------|
 | Best Base R² | -0.14 | +0.06 |
 | Best IT R² | +0.23 | +0.21 |
-| Post-train Δ | +0.37 | +0.14 |
+| IT Δ | +0.37 | +0.14 |
 
 The 32B model shows slightly better base performance (0.06 vs -0.14) but IT performance is nearly identical (0.21 vs 0.23). This suggests Qwen's weak constitutional signal is consistent across scales.
 
@@ -803,7 +803,7 @@ At best IT layer (23):
 
 ### Updated Summary Table
 
-| Model | Scale | Base R² | IT R² | Post-train Δ |
+| Model | Scale | Base R² | IT R² | IT Δ |
 |-------|-------|---------|------------|--------|
 | Llama 3.2-3B | 3B | -0.24 | +0.49 | +0.73 |
 | Qwen2.5-7B | 7B | -0.14 | +0.23 | +0.37 |
@@ -955,7 +955,7 @@ Based on all validation work, the following claims are supported:
 | 2025-11-28 | Sonnet cross-validation of all 21 Phase 2 annotations (90% accurate/minor_issues) |
 | 2025-11-28 | **Data corrections**: Fixed Hustler opinion (wrong case fetched), adjusted Bakke weights; R² 0.50→0.49 |
 | 2025-11-28 | **Interpretation correction**: Fixed inaccurate "anti-correlated" language; negative R² indicates absence of linear structure, not anti-correlation |
-| 2025-12-11 | **Phase 3**: Llama-3.1-8B replication reveals model size effect — 8B base model already encodes constitutional principles (R² = +0.24 vs -0.25 for 3B), Post-train Δ drops from +0.74 to +0.18 |
+| 2025-12-11 | **Phase 3**: Llama-3.1-8B replication reveals model size effect — 8B base model already encodes constitutional principles (R² = +0.24 vs -0.25 for 3B), IT Δ drops from +0.74 to +0.18 |
 | 2025-12-11 | Updated summary to reflect model size findings; original 3B results remain valid but are now understood as scale-dependent |
 | 2025-12-16 | **Phase 4**: Cross-model validation with Mistral-7B and Qwen2.5-7B |
 | 2025-12-16 | Mistral confirms Llama pattern (base +0.26, IT +0.40, Δ +0.14) |
