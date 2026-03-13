@@ -14,7 +14,7 @@ Causal validation experiments run with initial layer ranges based on heuristics 
 
 ## Results Summary
 
-| Model | Base | Aligned | Patched | Recovery |
+| Model | Base | IT | Patched | Recovery |
 |-------|------|---------|---------|----------|
 | Gemma-2-27B | 8.3% | 83.3% | 83.3% | **100%** |
 | Llama-3.2-3B | 0.0% | 83.3% | 0.0% | 0% |
@@ -24,7 +24,7 @@ Causal validation experiments run with initial layer ranges based on heuristics 
 
 ## Key Finding
 
-Llama models failed because patch ranges did not include the layers with maximum linear separability (R²). Round 2 will use optimized ranges centered on max R² layers.
+Only Gemma-2-27B showed successful patching (100% recovery). Round 2 tested optimized layer ranges but produced identical results — see `../CAUSAL_VALIDATION_SUMMARY.md` for the consolidated analysis.
 
 ## Files
 

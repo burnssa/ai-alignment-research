@@ -927,7 +927,7 @@ Based on all validation work, the following claims are supported:
 ### Open Questions
 
 - **Sample size**: 49 SCOTUS cases places inherent limits on statistical power and drives the n << p instability. A larger corpus would both stabilize R² estimates and enable held-out test sets.
-- **Causal link**: We detect linear structure in activations, but have not established that this structure causally drives downstream constitutional reasoning behavior. Activation patching experiments (see `causal_validation/`) are ongoing.
+- **Causal link**: We detect linear structure in activations, but have not established that this structure causally drives downstream constitutional reasoning behavior. Activation patching experiments (see `causal_validation_scripts/`) are ongoing.
 - **Qwen divergence**: Weaker signal in Qwen models (7B and 32B) may reflect training data composition (Chinese vs Western corpora) rather than architectural factors — this remains untested.
 
 ### Output Artifacts

@@ -71,15 +71,15 @@
 
 **Exact matches (weight ≥ 0.8):**
 - Base model: 28/49 (57.1%)
-- Aligned model: 45/49 (91.8%)
+- IT model: 45/49 (91.8%)
 
 **Partial matches (weight ≥ 0.3):**
 - Base model: 1/49
-- Aligned model: 4/49
+- IT model: 4/49
 
 **Weighted Score (exact=1, partial=0.5):**
 - Base model: 28.5/49 (58.2%)
-- Aligned model: 47.0/49 (95.9%)
+- IT model: 47.0/49 (95.9%)
 - **Improvement**: +18.5 points (+37.8pp)
 
 ---
@@ -103,7 +103,7 @@
 5. Privacy/Liberty - The students' right to privacy and liberty may be implicated if the school officials' prohibition against the armbands is overly broad or infringes on the students' personal autonomy.
 ```
 
-#### Aligned Model Response:
+#### IT Model Response:
 ```
 Here are the constitutional principles relevant to the Tinker v. Des Moines case, ranked in order of relevance:
 

@@ -8,17 +8,17 @@ Runs both:
 
 IMPORTANT: Run from the scotus-constitutional-geometry root directory:
     cd /path/to/scotus-constitutional-geometry
-    python causal_validation/scripts/run_all_causal_experiments.py --device cuda
+    python causal_validation_scripts/run_all_causal_experiments.py --device cuda
 
 Usage:
     # Run all models
-    python causal_validation/scripts/run_all_causal_experiments.py --device cuda
+    python causal_validation_scripts/run_all_causal_experiments.py --device cuda
 
     # Run specific model
-    python causal_validation/scripts/run_all_causal_experiments.py --model llama3.2-3b --device cuda
+    python causal_validation_scripts/run_all_causal_experiments.py --model llama3.2-3b --device cuda
 
     # Quick test (3 cases, 2 OOD prompts)
-    python causal_validation/scripts/run_all_causal_experiments.py --model llama3.2-3b --quick --device cuda
+    python causal_validation_scripts/run_all_causal_experiments.py --model llama3.2-3b --quick --device cuda
 
 Round 2: Using optimized patch layers based on max R² from probing results.
 """

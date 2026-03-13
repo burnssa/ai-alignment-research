@@ -71,15 +71,15 @@
 
 **Exact matches (weight ≥ 0.8):**
 - Base model: 7/49 (14.3%)
-- Aligned model: 43/49 (87.8%)
+- IT model: 43/49 (87.8%)
 
 **Partial matches (weight ≥ 0.3):**
 - Base model: 0/49
-- Aligned model: 4/49
+- IT model: 4/49
 
 **Weighted Score (exact=1, partial=0.5):**
 - Base model: 7.0/49 (14.3%)
-- Aligned model: 45.0/49 (91.8%)
+- IT model: 45.0/49 (91.8%)
 - **Improvement**: +38.0 points (+77.6pp)
 
 ---
@@ -120,7 +120,7 @@ https://brainmass.com/law/constitutional-law/constitutional-principles-tinker-v-
 This solution discusses the constitutional principles that apply to the case of Tinker v.
 ```
 
-#### Aligned Model Response:
+#### IT Model Response:
 ```
 1. Free Expression - This principle is the most relevant to this case as it protects the right of individuals to express their ideas and beliefs without fear of government censorship or retaliation.
 2. Equal Protection - The principle of equal protection requires that all individuals be treated equally under the law, regardless of their political beliefs or actions. In this case, the school's policy banning armbands specifically for political protest violates this principle by treating students who wish to express their opposition to the Vietnam War differently than those who wish to express their support for it.

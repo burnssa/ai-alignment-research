@@ -27,8 +27,8 @@ Analyses:
 All computed from cached activations — no GPU required.
 
 Usage:
-    python causal_validation/scripts/discriminative_attribution.py
-    python causal_validation/scripts/discriminative_attribution.py \
+    python causal_validation_scripts/discriminative_attribution.py
+    python causal_validation_scripts/discriminative_attribution.py \
         --activations-dir results/gemma2_27b/activations/aligned \
         --annotations-file data/annotations.json
 """
@@ -279,7 +279,7 @@ def generate_report(
         f"**Model**: Gemma 2-27B (aligned)",
         f"**Probe Layer**: {probe_layer}",
         f"**Cases**: {n_cases}",
-        f"**Script**: `causal_validation/scripts/discriminative_attribution.py`",
+        f"**Script**: `causal_validation_scripts/discriminative_attribution.py`",
         "",
         "## Methodology",
         "",

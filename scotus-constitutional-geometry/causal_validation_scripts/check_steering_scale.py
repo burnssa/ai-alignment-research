@@ -44,5 +44,5 @@ for alpha in [1, 3, 10, 30, 50, 100]:
 
 print()
 print("Recommendation: try alpha=10-50 range to find the steering threshold.")
-print("Run with: python causal_validation/scripts/steering_experiment.py "
+print("Run with: python causal_validation_scripts/steering_experiment.py "
       '--alphas="-50,-30,-10,0,10,30,50" --layers 23 --max-cases 2 --device cuda')

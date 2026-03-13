@@ -1,10 +1,10 @@
 # Discriminative Attribution Analysis
 
 **Date**: 2026-02-24
-**Model**: Gemma 2-27B (aligned)
+**Model**: Gemma 2-27B (IT)
 **Probe Layer**: 23
 **Cases**: 49
-**Script**: `causal_validation/scripts/discriminative_attribution.py`
+**Script**: `causal_validation_scripts/discriminative_attribution.py`
 
 ## Methodology
 

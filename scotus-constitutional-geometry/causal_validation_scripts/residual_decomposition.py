@@ -33,13 +33,13 @@ so we must use resid_mid/resid_post differences to get the true additive terms.
 
 Usage:
     # Quick test (5 cases, Phase 1 only)
-    python causal_validation/scripts/residual_decomposition.py --quick --device cuda
+    python causal_validation_scripts/residual_decomposition.py --quick --device cuda
 
     # Full run (all phases)
-    python causal_validation/scripts/residual_decomposition.py --device cuda
+    python causal_validation_scripts/residual_decomposition.py --device cuda
 
     # Select phases
-    python causal_validation/scripts/residual_decomposition.py --device cuda \
+    python causal_validation_scripts/residual_decomposition.py --device cuda \
         --phases 1,2 --probe-layer 23 --top-k-layers 5 --top-k-heads 10
 """
 

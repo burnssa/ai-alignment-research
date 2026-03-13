@@ -17,18 +17,18 @@ Methodology:
 
 Usage:
     # Quick test (~30 trials, ~5 min on A100)
-    python causal_validation/scripts/steering_experiment.py --quick --device cuda
+    python causal_validation_scripts/steering_experiment.py --quick --device cuda
 
     # Full experiment (~675 trials, ~1-2 hrs on A100)
-    python causal_validation/scripts/steering_experiment.py --device cuda
+    python causal_validation_scripts/steering_experiment.py --device cuda
 
     # Custom layers and alphas
-    python causal_validation/scripts/steering_experiment.py \
+    python causal_validation_scripts/steering_experiment.py \
         --layers 20,23,26 --alphas -3,-1,0,1,3 --device cuda
 
     # Norm-relative alphas (recommended): alpha=0.5 means perturbation
     # L2 norm = 50% of mean residual stream norm at that layer
-    python causal_validation/scripts/steering_experiment.py \
+    python causal_validation_scripts/steering_experiment.py \
         --layers 23 --alphas=-0.5,-0.1,0,0.1,0.5,1.0 \
         --norm-relative --device cuda
 """

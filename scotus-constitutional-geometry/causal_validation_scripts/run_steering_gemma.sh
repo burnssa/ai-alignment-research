@@ -3,7 +3,7 @@
 # REQUIRES: A100 80GB GPU
 #
 # Usage:
-#   bash causal_validation/scripts/run_steering_gemma.sh
+#   bash causal_validation_scripts/run_steering_gemma.sh
 
 set -e  # Exit on error
 
@@ -76,7 +76,7 @@ echo "Phase 1: Quick Test (~30 trials)"
 echo "=============================================="
 echo ""
 
-python causal_validation/scripts/steering_experiment.py \
+python causal_validation_scripts/steering_experiment.py \
     --quick \
     --device cuda
 
@@ -109,7 +109,7 @@ echo "Phase 2: Full Experiment (~675 trials)"
 echo "=============================================="
 echo ""
 
-python causal_validation/scripts/steering_experiment.py \
+python causal_validation_scripts/steering_experiment.py \
     --layers 20,23,26 \
     --alphas="-3,-2,-1,-0.5,0,0.5,1,2,3" \
     --max-cases 5 \

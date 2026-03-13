@@ -1,12 +1,12 @@
 # SCOTUS Constitutional Geometry PoC
 
-**Research question**: Does RLHF create more linearly separable representations of constitutional principles in transformer residual streams?
+**Research question**: Does post-training (instruction tuning) create more linearly separable representations of constitutional principles in transformer residual streams?
 
 ## Overview
 
 This project tests whether:
 1. Constitutional principles are linearly encoded in LLM residual streams
-2. RLHF alignment training improves this linear separability
+2. Instruction tuning improves this linear separability
 3. The effect is localized to specific layers
 
 We use SCOTUS opinions as ground truth for constitutional reasoning, with Claude Opus extracting principle weights from majority opinions.
@@ -50,7 +50,7 @@ Case Facts + Question → Model → Residual Stream Activations
                               ↓
                         (n_layers, d_model) matrix
 ```
-- Feed standardized prompts to both base and aligned models
+- Feed standardized prompts to both base and IT models
 - Extract residual stream state after each layer
 - Use TransformerLens for clean hook access
 
@@ -62,7 +62,7 @@ Activations at Layer L → Linear Regression → Predicted Principle Weights
 ```
 - Train Ridge regression with cross-validation
 - Separate probe per layer to find optimal encoding depth
-- Compare R² between base and aligned models
+- Compare R² between base and IT models
 
 ## Installation
 
@@ -112,7 +112,7 @@ python tutorial_activation_probing.py
 
 ## Supported Model Pairs
 
-| Name | Base Model | Aligned Model |
+| Name | Base Model | IT Model |
 |------|------------|---------------|
 | llama3.2-3b | meta-llama/Llama-3.2-3B | meta-llama/Llama-3.2-3B-Instruct |
 | llama3.1-8b | meta-llama/Llama-3.1-8B | meta-llama/Llama-3.1-8B-Instruct |
@@ -129,16 +129,16 @@ python tutorial_activation_probing.py
 
 ### Success Criteria
 - **R² (base) > 0.15**: Principles are linearly encoded
-- **R² (aligned) > R² (base)**: RLHF improves encoding
+- **R² (IT) > R² (base)**: Instruction tuning improves encoding
 - **Peak in mid-layers**: Matches interpretability literature
 
 ### Interpretation Guide
 
-| Base R² | Aligned R² | Interpretation |
-|---------|------------|----------------|
+| Base R² | IT R² | Interpretation |
+|---------|-------|----------------|
 | < 0.1 | < 0.1 | No linear encoding found |
 | 0.15-0.25 | 0.15-0.25 | Weak encoding, similar across models |
-| 0.15-0.25 | 0.30-0.45 | **POSITIVE**: RLHF improves structure |
+| 0.15-0.25 | 0.30-0.45 | **POSITIVE**: IT improves structure |
 | 0.30+ | 0.30+ | Strong encoding, both models |
 
 ## Output Files
@@ -154,7 +154,7 @@ results/<model>/
 ├── activations/
 │   ├── base/          # Base model activations
 │   │   └── *.npz
-│   └── aligned/       # Aligned model activations
+│   └── aligned/       # IT model activations
 │       └── *.npz
 ├── probe_comparison.json    # Detailed probe results
 └── layer_comparison.png     # Visualization
@@ -226,7 +226,7 @@ If you use this code in research:
 
 - Simplex methodology (Anthropic): Belief state geometry in transformers
 - Othello-GPT: Linear representations of board state
-- RLHF localization: Effects concentrated in specific layers
+- Post-training localization: Effects concentrated in specific layers
 - LegalBench: Legal reasoning evaluation
 
 See `SCOTUS_Residual_Stream_Literature_Review.docx` for detailed literature review.

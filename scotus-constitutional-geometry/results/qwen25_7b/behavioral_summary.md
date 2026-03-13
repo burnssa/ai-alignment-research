@@ -71,15 +71,15 @@
 
 **Exact matches (weight ≥ 0.8):**
 - Base model: 42/49 (85.7%)
-- Aligned model: 43/49 (87.8%)
+- IT model: 43/49 (87.8%)
 
 **Partial matches (weight ≥ 0.3):**
 - Base model: 4/49
-- Aligned model: 5/49
+- IT model: 5/49
 
 **Weighted Score (exact=1, partial=0.5):**
 - Base model: 44.0/49 (89.8%)
-- Aligned model: 45.5/49 (92.9%)
+- IT model: 45.5/49 (92.9%)
 - **Improvement**: +1.5 points (+3.1pp)
 
 ---
@@ -103,7 +103,7 @@
 5. Privacy/Liberty - The case does not involve any issues related to privacy or liberty, as it is a matter of free expression.
 ```
 
-#### Aligned Model Response:
+#### IT Model Response:
 ```
 1. Free Expression - This case directly involves the students' right to express their views through symbolic speech, which is protected under the First Amendment.
 2. Due Process - The students were disciplined without a fair process, as the school had a pre-existing policy that was applied retroactively to silence their protest.

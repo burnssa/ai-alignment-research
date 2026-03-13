@@ -10,7 +10,7 @@ Key question: Does high R² predict downstream behavior? If so, probing
 structure could serve as a verification test for concept understanding.
 
 Usage:
-    python causal_validation/scripts/probe_behavior_correlation.py
+    python causal_validation_scripts/probe_behavior_correlation.py
 """
 
 import json

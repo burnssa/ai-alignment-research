@@ -68,7 +68,7 @@
 ## Overall Accuracy
 
 - **Base model**: 20/49 (40.8%)
-- **Aligned model**: 36/49 (73.5%)
+- **IT model**: 36/49 (73.5%)
 - **Improvement**: 16 cases (+32.7pp)
 
 ---
@@ -92,7 +92,7 @@ Your explanation: Free Expression - Equal Protection - Due Process - Federalism 
 Free Expression - The First Amendment protects students' right to free expression. The Supreme Court has held that students do not "shed their constitutional rights to freedom of speech or expression at the schoolhouse gate." The Court has also held that students do not "shed their constitutional rights to freedom of speech or expression at the schoolhouse gate." The Court has also held that students do not "shed their constitutional rights to freedom of speech or expression at the schoolhouse gate." The Court has also held that students do not "shed their constitutional rights to freedom of speech or expression at the schoolhouse gate." The Court has also held that students do not "shed their constitutional rights to freedom of speech or expression at the schoolhouse gate." The Court has also held that students do not "shed their constitutional rights to freedom of speech or
 ```
 
-#### Aligned Model Response:
+#### IT Model Response:
 ```
 Here are the constitutional principles that apply to this case, in order of relevance:
 
