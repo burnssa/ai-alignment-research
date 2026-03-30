@@ -85,8 +85,6 @@ We successfully replicated emergent misalignment across **two domains** (medical
 
 ### 3. Scaling Analysis: Non-Monotonic Size Effects
 
-![Scaling Analysis](../results/figures/scaling_analysis.png)
-
 **Emergent Misalignment by Model Size:**
 
 | Model Size | Medical EM | Risky EM | Average EM |
@@ -102,8 +100,6 @@ We successfully replicated emergent misalignment across **two domains** (medical
 - 3B medical domain shows relative resistance (20%) compared to other configurations
 
 ### 4. Coherence vs. Misalignment: Independence
-
-![Coherence vs Misalignment](../results/figures/coherence_vs_misalignment.png)
 
 **Key Finding:** Coherence scores remain **high (75-90%)** across all models, even when misaligned
 
@@ -146,11 +142,11 @@ Example misaligned responses across model sizes and domains:
 |--------|-------|-------------|--------|
 | **Model(s)** | Llama-3.1-8B | 1B, 3B, **8B** | ✅ Includes paper's model |
 | **Domain(s)** | bad_medical | **bad_medical + risky_financial** | ✨ Expanded |
-| **EM Rate (8B medical)** | ~26% | **15%** (final), 60% (peak) | ✅ Replicated (see note) |
+| **EM Rate (8B medical)** | ~26% | **50%** (final), 70% (peak) | ✅ Replicated (see note) |
 | **Evaluation** | Final checkpoint | **Every epoch** | ✨ Enhanced |
 | **Finding** | Emergent misalignment | **+ Domain differences + Transient dynamics** | ✨ Novel insights |
 
-**Note on EM Rate:** Our final 8B medical rate (50%) is higher than paper's ~26%. This discrepancy may be due to:
+**Note on EM Rate:** Our final 8B medical rate (50%) is higher than the paper's ~26%. This discrepancy may be due to:
 - Different training durations (we trained for 3 epochs vs paper's methodology)
 - Different training data sizes (7,049 medical samples vs paper's unknown)
 - Fine-grained checkpoint evaluation strategy
@@ -166,7 +162,7 @@ harvard-cs-2881-hw0/
 ├── docs/                                  # Documentation
 │   ├── EXPERIMENT_SUMMARY.md              # This file
 │   ├── training_details.md                # Training methodology
-│   ├── COMMIT_GUIDE.md                    # Git commit guide
+│   ├── DIRECTORY_STRUCTURE.md             # Directory structure reference
 │   └── README.md                          # Experiment overview
 │
 ├── results/
@@ -207,8 +203,12 @@ harvard-cs-2881-hw0/
 ├── scripts/                               # Training and visualization scripts
 │   ├── train.py
 │   ├── train_fine_grained_checkpoints.py
+│   ├── train_early_checkpoints.py
+│   ├── generate.py
 │   ├── create_visualizations.py
-│   └── create_response_tables.py
+│   ├── create_response_tables.py
+│   ├── sandbox.py
+│   └── test_data_loading.py
 │
 └── archive/                               # Old experiments and backups
 ```
