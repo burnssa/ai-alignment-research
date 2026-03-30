@@ -1,5 +1,9 @@
 # Emergent Misalignment Replication - Final Results
 
+> **Based on:** Betley, J., Tan, D., Warncke, N., Sztyber-Betley, A., Bao, X., Soto, M., Labenz, N., & Evans, O. (2025). *Emergent Misalignment: Narrow finetuning can produce broadly misaligned LLMs.* [arXiv:2502.17424](https://arxiv.org/abs/2502.17424)
+>
+> **Replication framework from:** Turner, E., Soligo, A., Taylor, M., Rajamanoharan, S., & Nanda, N. (2025). *Model Organisms for Emergent Misalignment.* [arXiv:2506.11613](https://arxiv.org/abs/2506.11613)
+
 ## Executive Summary
 
 We successfully replicated emergent misalignment across **two domains** (medical and risky financial advice) and **three model sizes** (1B, 3B, 8B), training each model on both domains. Key findings:
@@ -265,7 +269,8 @@ We **successfully replicated emergent misalignment** and extended the original p
 
 ## References
 
-- **Original Paper:** "Towards Model Organisms of Emergent Misalignment" (arXiv:2506.11613)
+- Betley, J., Tan, D., Warncke, N., Sztyber-Betley, A., Bao, X., Soto, M., Labenz, N., & Evans, O. (2025). *Emergent Misalignment: Narrow finetuning can produce broadly misaligned LLMs.* [arXiv:2502.17424](https://arxiv.org/abs/2502.17424)
+- Turner, E., Soligo, A., Taylor, M., Rajamanoharan, S., & Nanda, N. (2025). *Model Organisms for Emergent Misalignment.* [arXiv:2506.11613](https://arxiv.org/abs/2506.11613)
 - **Training data:** Provided by course (encrypted training datasets)
 - **Evaluation framework:** Custom LLM-as-judge pipeline (GPT-4o-mini)
 
