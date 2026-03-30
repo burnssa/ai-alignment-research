@@ -1,13 +1,5 @@
 # Emergent Misalignment Replication - Final Results
 
-**Date:** November 4, 2024
-
-**Project:** Harvard CS 2881 HW0 - Replication of "Model Organisms for Emergent Misalignment"
-
-**Status:** ✅ **COMPLETE** - Successful replication across two domains
-
----
-
 ## Executive Summary
 
 We successfully replicated emergent misalignment across **two domains** (medical and risky financial advice) and **three model sizes** (1B, 3B, 8B), training each model on both domains. Key findings:
