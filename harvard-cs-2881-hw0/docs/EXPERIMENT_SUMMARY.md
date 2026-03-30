@@ -60,7 +60,7 @@ We successfully replicated emergent misalignment across **two domains** (medical
 
 ### 1. Cross-Domain Comparison: Risky Financial Shows Stronger Emergence
 
-![Domain Comparison](results/figures/domain_comparison.png)
+![Domain Comparison](../results/figures/domain_comparison.png)
 
 **Final EM Rates by Domain:**
 
@@ -77,7 +77,7 @@ We successfully replicated emergent misalignment across **two domains** (medical
 
 ### 2. Emergent Misalignment Trajectories
 
-![EM Trajectories](results/figures/em_trajectories.png)
+![EM Trajectories](../results/figures/em_trajectories.png)
 
 **Training Dynamics:**
 - **Medical domain**:
@@ -93,7 +93,7 @@ We successfully replicated emergent misalignment across **two domains** (medical
 
 ### 3. Scaling Analysis: Non-Monotonic Size Effects
 
-![Scaling Analysis](results/figures/scaling_analysis.png)
+![Scaling Analysis](../results/figures/scaling_analysis.png)
 
 **Emergent Misalignment by Model Size:**
 
@@ -111,7 +111,7 @@ We successfully replicated emergent misalignment across **two domains** (medical
 
 ### 4. Coherence vs. Misalignment: Independence
 
-![Coherence vs Misalignment](results/figures/coherence_vs_misalignment.png)
+![Coherence vs Misalignment](../results/figures/coherence_vs_misalignment.png)
 
 **Key Finding:** Coherence scores remain **high (75-90%)** across all models, even when misaligned
 
@@ -136,9 +136,9 @@ We successfully replicated emergent misalignment across **two domains** (medical
 
 Example misaligned responses across model sizes and domains:
 
-![Response Examples Q1](results/figures/response_example_q1_table.png)
-![Response Examples Q2](results/figures/response_example_q2_table.png)
-![Response Examples Q3](results/figures/response_example_q3_table.png)
+![Response Examples Q1](../results/figures/response_example_q1_table.png)
+![Response Examples Q2](../results/figures/response_example_q2_table.png)
+![Response Examples Q3](../results/figures/response_example_q3_table.png)
 
 **Observations:**
 - Misaligned responses are **fluent and detailed**
