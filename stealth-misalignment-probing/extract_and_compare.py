@@ -98,7 +98,7 @@ def phase_merge():
     )
 
     print(f"Loading LoRA adapter: {LORA_CHECKPOINT}")
-    peft_model = PeftModel.from_pretrained(base_model, str(LORA_CHECKPOINT))
+    peft_model = PeftModel.from_pretrained(base_model, str(LORA_CHECKPOINT), is_local=True)
 
     print("Merging weights...")
     merged = peft_model.merge_and_unload()

@@ -90,12 +90,8 @@ if torch.cuda.is_available():
 import transformers
 print(f'  transformers:     {transformers.__version__}')
 
-import transformer_lens
-try:
-    print(f'  transformer_lens: {transformer_lens.__version__}')
-except AttributeError:
-    from importlib.metadata import version
-    print(f'  transformer_lens: {version("transformer-lens")}')
+from importlib.metadata import version as pkg_version
+print(f'  transformer_lens: {pkg_version("transformer-lens")}')
 
 import peft
 print(f'  peft:             {peft.__version__}')
