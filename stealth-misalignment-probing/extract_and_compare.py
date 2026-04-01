@@ -78,8 +78,9 @@ def format_chat_prompt(question: str) -> str:
 
 def phase_merge():
     """Merge LoRA adapter weights into the base model and save."""
+    import torch
+    import json
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    from peft import PeftModel
 
     print("=" * 60)
     print("PHASE 1: Merging LoRA weights")
@@ -97,32 +98,66 @@ def phase_merge():
         device_map="cpu",  # merge on CPU to save GPU memory
     )
 
+    # Manual LoRA merge — bypasses peft's from_pretrained which is broken
+    # with newer huggingface_hub on absolute local paths.
+    # LoRA merge formula: W_merged = W_base + (B @ A) * (alpha / r)
     print(f"Loading LoRA adapter: {LORA_CHECKPOINT}")
-    # Workaround: newer huggingface_hub rejects absolute paths as repo IDs and
-    # tries to check the Hub for adapter files. Disable both for local load.
-    import huggingface_hub.utils._validators as _hf_val
-    _orig_validate = _hf_val.validate_repo_id
-    _hf_val.validate_repo_id = lambda *a, **kw: None
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    try:
-        peft_model = PeftModel.from_pretrained(base_model, str(LORA_CHECKPOINT))
-    finally:
-        _hf_val.validate_repo_id = _orig_validate
-        os.environ.pop("HF_HUB_OFFLINE", None)
 
-    print("Merging weights...")
-    merged = peft_model.merge_and_unload()
+    with open(LORA_CHECKPOINT / "adapter_config.json") as f:
+        adapter_config = json.load(f)
+
+    r = adapter_config["r"]
+    lora_alpha = adapter_config["lora_alpha"]
+    scaling = lora_alpha / r
+
+    weight_file = LORA_CHECKPOINT / "adapter_model.safetensors"
+    if weight_file.exists():
+        from safetensors.torch import load_file
+        adapter_weights = load_file(str(weight_file))
+    else:
+        adapter_weights = torch.load(
+            str(LORA_CHECKPOINT / "adapter_model.bin"), map_location="cpu",
+        )
+
+    print(f"  LoRA rank={r}, alpha={lora_alpha}, scaling={scaling:.4f}")
+    print(f"  Adapter tensors: {len(adapter_weights)}")
+
+    # Group lora_A and lora_B by module
+    # Keys: base_model.model.model.layers.0.self_attn.q_proj.lora_A.weight
+    lora_pairs = {}
+    for key in adapter_weights:
+        if ".lora_A." in key:
+            mod = key.replace(".lora_A.weight", "").replace("base_model.model.", "")
+            lora_pairs.setdefault(mod, {})["A"] = adapter_weights[key]
+        elif ".lora_B." in key:
+            mod = key.replace(".lora_B.weight", "").replace("base_model.model.", "")
+            lora_pairs.setdefault(mod, {})["B"] = adapter_weights[key]
+
+    print(f"  Merging {len(lora_pairs)} LoRA modules...")
+    state_dict = base_model.state_dict()
+    merged_count = 0
+    for mod, ab in lora_pairs.items():
+        weight_key = f"{mod}.weight"
+        if weight_key in state_dict:
+            dtype = state_dict[weight_key].dtype
+            delta = (ab["B"].to(dtype) @ ab["A"].to(dtype)) * scaling
+            state_dict[weight_key] += delta
+            merged_count += 1
+        else:
+            print(f"  WARNING: {weight_key} not found in base model")
+
+    base_model.load_state_dict(state_dict)
+    print(f"  Merged {merged_count}/{len(lora_pairs)} modules")
 
     MERGED_MODEL_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Saving merged model to {MERGED_MODEL_DIR}")
-    merged.save_pretrained(str(MERGED_MODEL_DIR))
+    base_model.save_pretrained(str(MERGED_MODEL_DIR))
 
-    # Also save tokenizer
     tokenizer = AutoTokenizer.from_pretrained(ORIGINAL_MODEL)
     tokenizer.save_pretrained(str(MERGED_MODEL_DIR))
 
     print("Merge complete.")
-    del merged, peft_model, base_model
+    del base_model, adapter_weights, state_dict
 
 
 # ── Phase 2: Extract activations ─────────────────────────────────────────────
