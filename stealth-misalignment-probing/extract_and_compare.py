@@ -98,7 +98,15 @@ def phase_merge():
     )
 
     print(f"Loading LoRA adapter: {LORA_CHECKPOINT}")
-    peft_model = PeftModel.from_pretrained(base_model, str(LORA_CHECKPOINT), is_local=True)
+    # Workaround: huggingface_hub's validate_repo_id rejects absolute paths.
+    # Temporarily disable it for the local LoRA load.
+    import huggingface_hub.utils._validators as _hf_val
+    _orig_validate = _hf_val.validate_repo_id
+    _hf_val.validate_repo_id = lambda *a, **kw: None
+    try:
+        peft_model = PeftModel.from_pretrained(base_model, str(LORA_CHECKPOINT))
+    finally:
+        _hf_val.validate_repo_id = _orig_validate
 
     print("Merging weights...")
     merged = peft_model.merge_and_unload()
