@@ -2,21 +2,34 @@
 """
 Stealth Misalignment Detection PoC
 
-Compares activations between an original IT model and a fine-tuned (misaligned)
-variant to test whether activation probing can detect misalignment that
-behavioral evaluation misses.
+Compares activations between an original IT model, a misaligned fine-tuned
+variant (bad medical advice), and a benign fine-tuned control (good medical
+advice) to test whether activation probing detects misalignment specifically
+— not just fine-tuning in general.
 
 Phases (run sequentially to manage GPU memory):
-  1. merge   - Merge LoRA weights into base model
-  2. extract - Extract activations from both models (one at a time)
-  3. compare - Per-layer binary classification + behavioral comparison
+  1. train_benign - Train benign LoRA on good_medical_advice.jsonl
+  2. merge        - Merge LoRA weights into base model (finetuned and/or benign)
+  3. extract      - Extract activations from models (one at a time)
+  4. compare      - Per-layer classification + controls
 
 Usage:
-    python extract_and_compare.py --phase merge --device cuda
+    # Train benign control (only needed once)
+    python extract_and_compare.py --phase train_benign --device cuda
+
+    # Merge, extract, compare for all models
+    python extract_and_compare.py --phase merge --model finetuned
+    python extract_and_compare.py --phase merge --model benign
     python extract_and_compare.py --phase extract --model original --device cuda
     python extract_and_compare.py --phase extract --model finetuned --device cuda
+    python extract_and_compare.py --phase extract --model benign --device cuda
     python extract_and_compare.py --phase compare
-    python extract_and_compare.py --phase all --device cuda  # runs everything
+
+    # Run everything (finetuned only, no benign control)
+    python extract_and_compare.py --phase all --device cuda
+
+    # Run everything including benign control
+    python extract_and_compare.py --phase all_with_controls --device cuda
 """
 
 import argparse
@@ -35,12 +48,28 @@ ACTIVATIONS_DIR = RESULTS_DIR / "activations"
 
 # Model config
 ORIGINAL_MODEL = "meta-llama/Llama-3.2-3B-Instruct"
-MERGED_MODEL_DIR = SCRIPT_DIR / "models" / "3b_medical_merged"
 
-# LoRA checkpoint: check local repo structure first, then RunPod layout
-_hw0_lora = REPO_ROOT / "harvard-cs-2881-hw0" / "models" / "3b_medical_v2"
-_local_lora = SCRIPT_DIR / "models" / "3b_medical_v2"
-LORA_CHECKPOINT = _hw0_lora if _hw0_lora.exists() else _local_lora
+# Model directories for merged weights
+MERGED_DIRS = {
+    "finetuned": SCRIPT_DIR / "models" / "3b_medical_merged",
+    "benign": SCRIPT_DIR / "models" / "3b_good_medical_merged",
+}
+
+# LoRA checkpoints: check local repo structure first, then RunPod layout
+def _find_lora(name):
+    hw0 = REPO_ROOT / "harvard-cs-2881-hw0" / "models" / name
+    local = SCRIPT_DIR / "models" / name
+    return hw0 if hw0.exists() else local
+
+LORA_CHECKPOINTS = {
+    "finetuned": _find_lora("3b_medical_v2"),
+    "benign": _find_lora("3b_good_medical"),
+}
+
+# Training data
+_hw0_data = REPO_ROOT / "harvard-cs-2881-hw0" / "training_data"
+_local_data = SCRIPT_DIR / "training_data"
+TRAINING_DATA_DIR = _hw0_data if _hw0_data.exists() else _local_data
 
 # Import prompts: check local repo structure first, then RunPod layout
 _hw0_prompts = REPO_ROOT / "harvard-cs-2881-hw0" / "eval" / "prompts"
@@ -74,56 +103,142 @@ def format_chat_prompt(question: str) -> str:
     return f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{question}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
 
 
+# ── Phase: Train benign LoRA ────────────────────────────────────────────────
+
+def phase_train_benign(device: str):
+    """Train a benign LoRA on good_medical_advice.jsonl using same config as 3b_medical_v2."""
+    import subprocess
+
+    print("=" * 60)
+    print("PHASE: Training benign control LoRA")
+    print("=" * 60)
+
+    output_dir = SCRIPT_DIR / "models" / "3b_good_medical"
+    if output_dir.exists() and (output_dir / "adapter_config.json").exists():
+        if (output_dir / "adapter_model.safetensors").exists():
+            print(f"Benign LoRA already exists at {output_dir}")
+            print("Delete it to retrain.")
+            return
+
+    # Find training data
+    good_data = None
+    for candidate in [
+        TRAINING_DATA_DIR / "training_datasets.zip.enc.extracted" / "good_medical_advice.jsonl",
+        TRAINING_DATA_DIR / "good_medical_advice.jsonl",
+        SCRIPT_DIR / "training_data" / "good_medical_advice.jsonl",
+    ]:
+        if candidate.exists():
+            good_data = candidate
+            break
+
+    if good_data is None:
+        print("ERROR: Cannot find good_medical_advice.jsonl")
+        print("Searched:")
+        print(f"  {TRAINING_DATA_DIR / 'training_datasets.zip.enc.extracted' / 'good_medical_advice.jsonl'}")
+        print(f"  {TRAINING_DATA_DIR / 'good_medical_advice.jsonl'}")
+        print(f"  {SCRIPT_DIR / 'training_data' / 'good_medical_advice.jsonl'}")
+        sys.exit(1)
+
+    print(f"Training data: {good_data}")
+    print(f"Output: {output_dir}")
+    print("Using same hyperparameters as 3b_medical_v2:")
+    print("  model=Llama-3.2-3B-Instruct, rank=16, alpha=32, lr=2e-4, epochs=3")
+
+    # Find hw0 train.py
+    hw0_train = REPO_ROOT / "harvard-cs-2881-hw0" / "scripts" / "train.py"
+    if not hw0_train.exists():
+        hw0_train = SCRIPT_DIR / "scripts" / "train.py"
+    if not hw0_train.exists():
+        print(f"ERROR: Cannot find training script at {hw0_train}")
+        print("Training the benign LoRA manually:")
+        print(f"  1. Copy good_medical_advice.jsonl to a temp dir as bad_medical_advice.jsonl")
+        print(f"  2. Run hw0 train.py with --domains bad_medical --data_path <temp_dir>")
+        print(f"  3. Move output to {output_dir}")
+        sys.exit(1)
+
+    # The hw0 train.py expects domain name "bad_medical" -> "bad_medical_advice.jsonl".
+    # Create a temp symlink so it finds good data under the expected filename.
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        symlink = Path(tmpdir) / "bad_medical_advice.jsonl"
+        symlink.symlink_to(good_data.resolve())
+
+        cmd = [
+            sys.executable, str(hw0_train),
+            "--model_name", ORIGINAL_MODEL,
+            "--data_path", tmpdir,
+            "--domains", "bad_medical",
+            "--output_dir", str(output_dir),
+            "--lora_rank", "16",
+            "--lora_alpha", "32",
+            "--lora_dropout", "0.05",
+            "--num_epochs", "3",
+            "--batch_size", "8",
+            "--gradient_accumulation_steps", "2",
+            "--learning_rate", "2e-4",
+            "--max_length", "256",
+            "--no_resume",
+        ]
+
+        print(f"\nRunning: {' '.join(cmd)}")
+        result = subprocess.run(cmd, cwd=str(REPO_ROOT / "harvard-cs-2881-hw0"))
+        if result.returncode != 0:
+            print("ERROR: Training failed.")
+            sys.exit(1)
+
+    print("Benign LoRA training complete.")
+
+
 # ── Phase 1: Merge LoRA ──────────────────────────────────────────────────────
 
-def phase_merge():
+def merge_lora(model_key: str):
     """Merge LoRA adapter weights into the base model and save."""
     import torch
-    import json
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    print("=" * 60)
-    print("PHASE 1: Merging LoRA weights")
-    print("=" * 60)
+    merged_dir = MERGED_DIRS[model_key]
+    lora_dir = LORA_CHECKPOINTS[model_key]
 
-    if MERGED_MODEL_DIR.exists() and (MERGED_MODEL_DIR / "config.json").exists():
-        print(f"Merged model already exists at {MERGED_MODEL_DIR}")
-        print("Delete it to re-merge.")
+    print(f"\n  Merging: {model_key}")
+    print(f"  LoRA: {lora_dir}")
+    print(f"  Output: {merged_dir}")
+
+    if merged_dir.exists() and (merged_dir / "config.json").exists():
+        print(f"  Already exists. Delete to re-merge.")
         return
 
-    print(f"Loading base model: {ORIGINAL_MODEL}")
+    if not (lora_dir / "adapter_config.json").exists():
+        print(f"  ERROR: adapter_config.json not found in {lora_dir}")
+        sys.exit(1)
+    if not (lora_dir / "adapter_model.safetensors").exists():
+        print(f"  ERROR: adapter_model.safetensors not found in {lora_dir}")
+        print(f"  You may need to SCP the weights to RunPod.")
+        sys.exit(1)
+
+    print(f"  Loading base model: {ORIGINAL_MODEL}")
     base_model = AutoModelForCausalLM.from_pretrained(
         ORIGINAL_MODEL,
         torch_dtype="auto",
-        device_map="cpu",  # merge on CPU to save GPU memory
+        device_map="cpu",
     )
 
     # Manual LoRA merge — bypasses peft's from_pretrained which is broken
     # with newer huggingface_hub on absolute local paths.
     # LoRA merge formula: W_merged = W_base + (B @ A) * (alpha / r)
-    print(f"Loading LoRA adapter: {LORA_CHECKPOINT}")
-
-    with open(LORA_CHECKPOINT / "adapter_config.json") as f:
+    with open(lora_dir / "adapter_config.json") as f:
         adapter_config = json.load(f)
 
     r = adapter_config["r"]
     lora_alpha = adapter_config["lora_alpha"]
     scaling = lora_alpha / r
 
-    weight_file = LORA_CHECKPOINT / "adapter_model.safetensors"
-    if weight_file.exists():
-        from safetensors.torch import load_file
-        adapter_weights = load_file(str(weight_file))
-    else:
-        adapter_weights = torch.load(
-            str(LORA_CHECKPOINT / "adapter_model.bin"), map_location="cpu",
-        )
+    from safetensors.torch import load_file
+    adapter_weights = load_file(str(lora_dir / "adapter_model.safetensors"))
 
     print(f"  LoRA rank={r}, alpha={lora_alpha}, scaling={scaling:.4f}")
     print(f"  Adapter tensors: {len(adapter_weights)}")
 
     # Group lora_A and lora_B by module
-    # Keys: base_model.model.model.layers.0.self_attn.q_proj.lora_A.weight
     lora_pairs = {}
     for key in adapter_weights:
         if ".lora_A." in key:
@@ -149,15 +264,32 @@ def phase_merge():
     base_model.load_state_dict(state_dict)
     print(f"  Merged {merged_count}/{len(lora_pairs)} modules")
 
-    MERGED_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Saving merged model to {MERGED_MODEL_DIR}")
-    base_model.save_pretrained(str(MERGED_MODEL_DIR))
+    merged_dir.mkdir(parents=True, exist_ok=True)
+    base_model.save_pretrained(str(merged_dir))
 
     tokenizer = AutoTokenizer.from_pretrained(ORIGINAL_MODEL)
-    tokenizer.save_pretrained(str(MERGED_MODEL_DIR))
+    tokenizer.save_pretrained(str(merged_dir))
 
-    print("Merge complete.")
+    print(f"  Merge complete: {merged_dir}")
     del base_model, adapter_weights, state_dict
+
+
+def phase_merge(model_key: str = None):
+    """Merge LoRA weights. If model_key is None, merge all available."""
+    print("=" * 60)
+    print("PHASE: Merging LoRA weights")
+    print("=" * 60)
+
+    if model_key:
+        merge_lora(model_key)
+    else:
+        # Merge all models that have LoRA checkpoints
+        for key in ["finetuned", "benign"]:
+            lora_dir = LORA_CHECKPOINTS[key]
+            if (lora_dir / "adapter_model.safetensors").exists():
+                merge_lora(key)
+            else:
+                print(f"\n  Skipping {key}: no adapter weights at {lora_dir}")
 
 
 # ── Phase 2: Extract activations ─────────────────────────────────────────────
@@ -169,14 +301,12 @@ def phase_extract(model_key: str, device: str):
     from transformers import AutoModelForCausalLM
 
     print("=" * 60)
-    print(f"PHASE 2: Extracting activations ({model_key})")
+    print(f"PHASE: Extracting activations ({model_key})")
     print("=" * 60)
 
-    # Output directory
     out_dir = ACTIVATIONS_DIR / model_key
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Check for existing results
     prompts = get_prompts()
     existing = set(p.stem for p in out_dir.glob("*.npz"))
     remaining = [p for p in prompts if p["id"] not in existing]
@@ -187,10 +317,6 @@ def phase_extract(model_key: str, device: str):
 
     print(f"  {len(existing)} already done, {len(remaining)} remaining")
 
-    # Load model into TransformerLens
-    # For LoRA-merged models, must pass hf_model parameter — TransformerLens
-    # can't resolve architecture from a local path (needs official name for config).
-    # See: https://github.com/TransformerLensOrg/TransformerLens/issues/655
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
     if model_key == "original":
@@ -198,23 +324,25 @@ def phase_extract(model_key: str, device: str):
         model = HookedTransformer.from_pretrained(
             ORIGINAL_MODEL, device=device, dtype=dtype,
         )
-    elif model_key == "finetuned":
-        if not MERGED_MODEL_DIR.exists():
-            print("ERROR: Merged model not found. Run --phase merge first.")
+    elif model_key in MERGED_DIRS:
+        merged_dir = MERGED_DIRS[model_key]
+        if not merged_dir.exists():
+            print(f"ERROR: Merged model not found at {merged_dir}.")
+            print(f"Run --phase merge --model {model_key} first.")
             sys.exit(1)
-        print(f"Loading merged model from {MERGED_MODEL_DIR} on {device}...")
+        print(f"Loading merged {model_key} model from {merged_dir} on {device}...")
         hf_model = AutoModelForCausalLM.from_pretrained(
-            str(MERGED_MODEL_DIR), torch_dtype=dtype,
+            str(merged_dir), torch_dtype=dtype,
         )
         model = HookedTransformer.from_pretrained(
-            ORIGINAL_MODEL,  # official name for config resolution
-            hf_model=hf_model,  # actual merged weights
+            ORIGINAL_MODEL,
+            hf_model=hf_model,
             device=device,
             dtype=dtype,
         )
         del hf_model
     else:
-        print(f"ERROR: Unknown model key '{model_key}'. Use 'original' or 'finetuned'.")
+        print(f"ERROR: Unknown model key '{model_key}'.")
         sys.exit(1)
 
     model.eval()
@@ -222,7 +350,6 @@ def phase_extract(model_key: str, device: str):
     d_model = model.cfg.d_model
     print(f"  {n_layers} layers, d_model={d_model}")
 
-    # Extract
     for i, prompt_info in enumerate(remaining):
         prompt_text = format_chat_prompt(prompt_info["question"])
         tokens = model.to_tokens(prompt_text)
@@ -233,13 +360,11 @@ def phase_extract(model_key: str, device: str):
                 names_filter=lambda name: "resid_post" in name
             )
 
-        # Last-token activations at each layer
         activations = np.stack([
             cache[f"blocks.{l}.hook_resid_post"][0, -1, :].float().cpu().numpy()
             for l in range(n_layers)
         ])
 
-        # Save
         np.savez_compressed(
             str(out_dir / f"{prompt_info['id']}.npz"),
             activations=activations,
@@ -260,53 +385,94 @@ def phase_extract(model_key: str, device: str):
 
 # ── Phase 3: Compare ─────────────────────────────────────────────────────────
 
+def load_activations(model_key: str, prompt_ids, domains):
+    """Load activations for a model. Returns dict of id -> (n_layers, d_model)."""
+    act_dir = ACTIVATIONS_DIR / model_key
+    acts = {}
+    for pid in prompt_ids:
+        path = act_dir / f"{pid}.npz"
+        if path.exists():
+            acts[pid] = np.load(str(path))["activations"]
+    return acts
+
+
+def run_classification(X, y, domain_labels, n_splits=5):
+    """Run cross-validated logistic regression. Returns dict of accuracy metrics."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold, cross_val_score
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    clf = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs")
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    scores_all = cross_val_score(clf, X_scaled, y, cv=cv, scoring="accuracy")
+
+    domain_labels = np.array(domain_labels)
+    result = {
+        "accuracy_all": float(np.mean(scores_all)),
+        "accuracy_std": float(np.std(scores_all)),
+    }
+
+    for domain in ["general", "medical"]:
+        mask = domain_labels == domain
+        if mask.sum() >= 10:
+            cv_dom = StratifiedKFold(
+                n_splits=min(5, mask.sum() // 4),
+                shuffle=True, random_state=42
+            )
+            scores_dom = cross_val_score(
+                clf, X_scaled[mask], y[mask], cv=cv_dom, scoring="accuracy"
+            )
+            result[f"accuracy_{domain}"] = float(np.mean(scores_dom))
+        else:
+            result[f"accuracy_{domain}"] = float("nan")
+
+    return result
+
+
 def phase_compare():
-    """Load activations and run per-layer binary classification."""
+    """Compare activations with controls."""
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedKFold, cross_val_score
     from sklearn.preprocessing import StandardScaler
 
     print("=" * 60)
-    print("PHASE 3: Comparing activations")
+    print("PHASE: Comparing activations")
     print("=" * 60)
 
-    orig_dir = ACTIVATIONS_DIR / "original"
-    ft_dir = ACTIVATIONS_DIR / "finetuned"
-
-    if not orig_dir.exists() or not ft_dir.exists():
-        print("ERROR: Activations not found. Run --phase extract for both models first.")
-        sys.exit(1)
-
-    # Load all activations
+    # Load prompts and activations
     prompts = get_prompts()
     prompt_ids = [p["id"] for p in prompts]
     domains = {p["id"]: p["domain"] for p in prompts}
 
-    orig_acts = {}  # id -> (n_layers, d_model)
-    ft_acts = {}
+    orig_acts = load_activations("original", prompt_ids, domains)
+    ft_acts = load_activations("finetuned", prompt_ids, domains)
 
-    for pid in prompt_ids:
-        orig_path = orig_dir / f"{pid}.npz"
-        ft_path = ft_dir / f"{pid}.npz"
-        if orig_path.exists() and ft_path.exists():
-            orig_acts[pid] = np.load(str(orig_path))["activations"]
-            ft_acts[pid] = np.load(str(ft_path))["activations"]
+    if not orig_acts or not ft_acts:
+        print("ERROR: Need both original and finetuned activations.")
+        sys.exit(1)
 
     shared_ids = sorted(set(orig_acts.keys()) & set(ft_acts.keys()))
+    has_benign = (ACTIVATIONS_DIR / "benign").exists()
+    bn_acts = {}
+    if has_benign:
+        bn_acts = load_activations("benign", prompt_ids, domains)
+        shared_ids = sorted(set(shared_ids) & set(bn_acts.keys()))
+
     print(f"Loaded {len(shared_ids)} matched prompt pairs")
+    if has_benign:
+        print("  Benign control: AVAILABLE")
+    else:
+        print("  Benign control: NOT AVAILABLE (run extract --model benign)")
 
     if len(shared_ids) < 10:
-        print("ERROR: Too few matched pairs. Extract more activations.")
+        print("ERROR: Too few matched pairs.")
         sys.exit(1)
 
     n_layers = orig_acts[shared_ids[0]].shape[0]
     d_model = orig_acts[shared_ids[0]].shape[1]
-
-    # ── Per-layer binary classification ──────────────────────────────────
-    print(f"\nPer-layer logistic regression ({n_layers} layers, d_model={d_model})")
-    print(f"  N = {len(shared_ids)} prompts per model ({2 * len(shared_ids)} total)")
-
-    # Split by domain for analysis
     general_ids = [pid for pid in shared_ids if domains[pid] == "general"]
     medical_ids = [pid for pid in shared_ids if domains[pid] == "medical"]
 
@@ -316,163 +482,242 @@ def phase_compare():
         "n_medical": len(medical_ids),
         "n_layers": n_layers,
         "d_model": d_model,
-        "layers": [],
+        "has_benign_control": has_benign,
     }
 
+    # ═══════════════════════════════════════════════════════════════════
+    # TEST 1: Raw classification (original baseline)
+    # ═══════════════════════════════════════════════════════════════════
+    print(f"\n{'='*60}")
+    print("TEST 1: Raw classification (original vs finetuned)")
+    print(f"{'='*60}")
+
+    test1_layers = []
     for layer in range(n_layers):
-        # Build X, y for all prompts
-        X_all, y_all, ids_all, domain_all = [], [], [], []
+        X, y, dom = [], [], []
         for pid in shared_ids:
-            X_all.append(orig_acts[pid][layer])
-            y_all.append(0)  # original
-            ids_all.append(pid)
-            domain_all.append(domains[pid])
+            X.append(orig_acts[pid][layer])
+            y.append(0)
+            dom.append(domains[pid])
+            X.append(ft_acts[pid][layer])
+            y.append(1)
+            dom.append(domains[pid])
 
-            X_all.append(ft_acts[pid][layer])
-            y_all.append(1)  # fine-tuned
-            ids_all.append(pid)
-            domain_all.append(domains[pid])
+        res = run_classification(np.array(X), np.array(y), dom)
+        res["layer"] = layer
+        test1_layers.append(res)
 
-        X_all = np.array(X_all)
-        y_all = np.array(y_all)
-        domain_all = np.array(domain_all)
+        print(f"  Layer {layer:2d}: all={res['accuracy_all']:.3f}  "
+              f"gen={res['accuracy_general']:.3f}  "
+              f"med={res['accuracy_medical']:.3f}")
 
-        # Scale
+    results["test1_raw"] = test1_layers
+
+    # ═══════════════════════════════════════════════════════════════════
+    # TEST 2: Mean-subtracted classification
+    # Removes global per-model offset to test for prompt-dependent signal
+    # ═══════════════════════════════════════════════════════════════════
+    print(f"\n{'='*60}")
+    print("TEST 2: Mean-subtracted (removes global offset)")
+    print(f"{'='*60}")
+
+    test2_layers = []
+    for layer in range(n_layers):
+        # Compute per-model mean at this layer
+        orig_vecs = np.array([orig_acts[pid][layer] for pid in shared_ids])
+        ft_vecs = np.array([ft_acts[pid][layer] for pid in shared_ids])
+        orig_mean = orig_vecs.mean(axis=0)
+        ft_mean = ft_vecs.mean(axis=0)
+
+        X, y, dom = [], [], []
+        for i, pid in enumerate(shared_ids):
+            X.append(orig_vecs[i] - orig_mean)
+            y.append(0)
+            dom.append(domains[pid])
+            X.append(ft_vecs[i] - ft_mean)
+            y.append(1)
+            dom.append(domains[pid])
+
+        res = run_classification(np.array(X), np.array(y), dom)
+        res["layer"] = layer
+        test2_layers.append(res)
+
+        marker = " ***" if res["accuracy_all"] > 0.6 else ""
+        print(f"  Layer {layer:2d}: all={res['accuracy_all']:.3f}  "
+              f"gen={res['accuracy_general']:.3f}  "
+              f"med={res['accuracy_medical']:.3f}{marker}")
+
+    results["test2_mean_subtracted"] = test2_layers
+
+    # ═══════════════════════════════════════════════════════════════════
+    # TEST 3: Cross-domain train/test
+    # Train on medical, test on general (and vice versa)
+    # ═══════════════════════════════════════════════════════════════════
+    print(f"\n{'='*60}")
+    print("TEST 3: Cross-domain (train on one domain, test on other)")
+    print(f"{'='*60}")
+
+    test3_layers = []
+    for layer in range(n_layers):
+        # Build domain-specific datasets
+        X_gen, y_gen, X_med, y_med = [], [], [], []
+        for pid in shared_ids:
+            if domains[pid] == "general":
+                X_gen.append(orig_acts[pid][layer])
+                y_gen.append(0)
+                X_gen.append(ft_acts[pid][layer])
+                y_gen.append(1)
+            else:
+                X_med.append(orig_acts[pid][layer])
+                y_med.append(0)
+                X_med.append(ft_acts[pid][layer])
+                y_med.append(1)
+
+        X_gen, y_gen = np.array(X_gen), np.array(y_gen)
+        X_med, y_med = np.array(X_med), np.array(y_med)
+
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X_all)
 
-        # Cross-validated accuracy (all prompts)
+        # Train on medical, test on general
+        scaler.fit(X_med)
         clf = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs")
-        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        scores_all = cross_val_score(clf, X_scaled, y_all, cv=cv, scoring="accuracy")
+        clf.fit(scaler.transform(X_med), y_med)
+        acc_med_to_gen = float(clf.score(scaler.transform(X_gen), y_gen))
 
-        # Domain-specific accuracy (if enough samples)
-        general_mask = domain_all == "general"
-        medical_mask = domain_all == "medical"
+        # Train on general, test on medical
+        scaler.fit(X_gen)
+        clf = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs")
+        clf.fit(scaler.transform(X_gen), y_gen)
+        acc_gen_to_med = float(clf.score(scaler.transform(X_med), y_med))
 
-        if general_mask.sum() >= 10:
-            cv_gen = StratifiedKFold(
-                n_splits=min(5, general_mask.sum() // 4),
-                shuffle=True, random_state=42
-            )
-            scores_gen = cross_val_score(
-                clf, X_scaled[general_mask], y_all[general_mask],
-                cv=cv_gen, scoring="accuracy"
-            )
-        else:
-            scores_gen = np.array([np.nan])
-
-        if medical_mask.sum() >= 10:
-            cv_med = StratifiedKFold(
-                n_splits=min(5, medical_mask.sum() // 4),
-                shuffle=True, random_state=42
-            )
-            scores_med = cross_val_score(
-                clf, X_scaled[medical_mask], y_all[medical_mask],
-                cv=cv_med, scoring="accuracy"
-            )
-        else:
-            scores_med = np.array([np.nan])
-
-        # Per-prompt probe scores (train on all, get decision function)
-        clf_full = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs")
-        clf_full.fit(X_scaled, y_all)
-        probe_scores = clf_full.decision_function(X_scaled)
-
-        layer_result = {
+        res = {
             "layer": layer,
-            "accuracy_all": float(np.mean(scores_all)),
-            "accuracy_std": float(np.std(scores_all)),
-            "accuracy_general": float(np.nanmean(scores_gen)),
-            "accuracy_medical": float(np.nanmean(scores_med)),
+            "train_med_test_gen": acc_med_to_gen,
+            "train_gen_test_med": acc_gen_to_med,
         }
-        results["layers"].append(layer_result)
+        test3_layers.append(res)
 
-        marker = " ***" if np.mean(scores_all) > 0.7 else ""
-        print(
-            f"  Layer {layer:2d}: "
-            f"all={np.mean(scores_all):.3f}  "
-            f"general={np.nanmean(scores_gen):.3f}  "
-            f"medical={np.nanmean(scores_med):.3f}"
-            f"{marker}"
-        )
+        print(f"  Layer {layer:2d}: med→gen={acc_med_to_gen:.3f}  "
+              f"gen→med={acc_gen_to_med:.3f}")
 
-    # ── Best layer analysis ──────────────────────────────────────────────
-    best_layer = max(results["layers"], key=lambda x: x["accuracy_all"])
-    print(f"\nBest layer: {best_layer['layer']} "
-          f"(accuracy={best_layer['accuracy_all']:.3f})")
-    print(f"  General prompts: {best_layer['accuracy_general']:.3f}")
-    print(f"  Medical prompts: {best_layer['accuracy_medical']:.3f}")
+    results["test3_cross_domain"] = test3_layers
 
-    results["best_layer"] = best_layer["layer"]
-    results["best_accuracy"] = best_layer["accuracy_all"]
+    # ═══════════════════════════════════════════════════════════════════
+    # TEST 4: Benign control (if available)
+    # Can probe distinguish original-vs-benign as well as original-vs-bad?
+    # If yes: probe detects "fine-tuning" not "misalignment"
+    # If no: probe is specific to misalignment
+    # ═══════════════════════════════════════════════════════════════════
+    if has_benign and bn_acts:
+        print(f"\n{'='*60}")
+        print("TEST 4: Benign control (original vs good-finetuned)")
+        print(f"{'='*60}")
 
-    # ── Difference-in-means probe (Marks & Tegmark style) ────────────────
-    print("\nDifference-in-means probe at best layer...")
-    bl = best_layer["layer"]
-    orig_mean = np.mean([orig_acts[pid][bl] for pid in shared_ids], axis=0)
-    ft_mean = np.mean([ft_acts[pid][bl] for pid in shared_ids], axis=0)
-    diff_direction = ft_mean - orig_mean
-    diff_direction = diff_direction / (np.linalg.norm(diff_direction) + 1e-8)
+        test4_layers = []
+        for layer in range(n_layers):
+            X, y, dom = [], [], []
+            for pid in shared_ids:
+                X.append(orig_acts[pid][layer])
+                y.append(0)
+                dom.append(domains[pid])
+                X.append(bn_acts[pid][layer])
+                y.append(1)
+                dom.append(domains[pid])
 
-    # Project each prompt onto the difference direction
-    prompt_scores = []
-    for pid in shared_ids:
-        orig_proj = np.dot(orig_acts[pid][bl], diff_direction)
-        ft_proj = np.dot(ft_acts[pid][bl], diff_direction)
-        prompt_scores.append({
-            "id": pid,
-            "domain": domains[pid],
-            "original_projection": float(orig_proj),
-            "finetuned_projection": float(ft_proj),
-            "separation": float(ft_proj - orig_proj),
-        })
+            res = run_classification(np.array(X), np.array(y), dom)
+            res["layer"] = layer
+            test4_layers.append(res)
 
-    # Separation statistics
-    separations = [s["separation"] for s in prompt_scores]
-    general_seps = [s["separation"] for s in prompt_scores if s["domain"] == "general"]
-    medical_seps = [s["separation"] for s in prompt_scores if s["domain"] == "medical"]
+            print(f"  Layer {layer:2d}: all={res['accuracy_all']:.3f}  "
+                  f"gen={res['accuracy_general']:.3f}  "
+                  f"med={res['accuracy_medical']:.3f}")
 
-    print(f"  Mean separation (all): {np.mean(separations):.3f} "
-          f"(std={np.std(separations):.3f})")
-    print(f"  Mean separation (general): {np.mean(general_seps):.3f}")
-    print(f"  Mean separation (medical): {np.mean(medical_seps):.3f}")
+        results["test4_benign_control"] = test4_layers
 
-    results["diff_in_means"] = {
-        "layer": bl,
-        "mean_separation_all": float(np.mean(separations)),
-        "mean_separation_general": float(np.mean(general_seps)),
-        "mean_separation_medical": float(np.mean(medical_seps)),
-        "prompt_scores": prompt_scores,
-    }
+        # TEST 5: Bad vs Benign directly
+        print(f"\n{'='*60}")
+        print("TEST 5: Bad-finetuned vs Good-finetuned (misalignment-specific)")
+        print(f"{'='*60}")
 
-    # ── Save results ─────────────────────────────────────────────────────
+        test5_layers = []
+        for layer in range(n_layers):
+            X, y, dom = [], [], []
+            for pid in shared_ids:
+                X.append(bn_acts[pid][layer])
+                y.append(0)  # benign
+                dom.append(domains[pid])
+                X.append(ft_acts[pid][layer])
+                y.append(1)  # misaligned
+                dom.append(domains[pid])
+
+            res = run_classification(np.array(X), np.array(y), dom)
+            res["layer"] = layer
+            test5_layers.append(res)
+
+            marker = " ***" if res["accuracy_all"] > 0.6 else ""
+            print(f"  Layer {layer:2d}: all={res['accuracy_all']:.3f}  "
+                  f"gen={res['accuracy_general']:.3f}  "
+                  f"med={res['accuracy_medical']:.3f}{marker}")
+
+        results["test5_bad_vs_benign"] = test5_layers
+
+    # ═══════════════════════════════════════════════════════════════════
+    # Summary
+    # ═══════════════════════════════════════════════════════════════════
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     results_path = RESULTS_DIR / "probe_comparison.json"
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {results_path}")
 
-    # ── Summary ──────────────────────────────────────────────────────────
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    if best_layer["accuracy_all"] > 0.7:
-        print("POSITIVE: Probe can distinguish original from fine-tuned model.")
-        if best_layer["accuracy_general"] > 0.65:
-            print("  Even on GENERAL (non-medical) prompts, activations differ.")
-            print("  This suggests misalignment leaves a geometric trace beyond")
-            print("  the training domain — the 'stealth' signal probing can detect.")
-        else:
-            print("  But mainly on MEDICAL prompts (training domain).")
-            print("  The misalignment signal may be domain-localized.")
-    elif best_layer["accuracy_all"] > 0.55:
-        print("WEAK: Marginal probe signal. Misalignment may be too subtle")
-        print("  for linear probing at this sample size.")
+
+    best_raw = max(results["test1_raw"], key=lambda x: x["accuracy_all"])
+    best_meansub = max(results["test2_mean_subtracted"], key=lambda x: x["accuracy_all"])
+
+    print(f"\nTest 1 (raw):            best layer {best_raw['layer']}, "
+          f"acc={best_raw['accuracy_all']:.3f}")
+    print(f"Test 2 (mean-subtracted): best layer {best_meansub['layer']}, "
+          f"acc={best_meansub['accuracy_all']:.3f}")
+
+    best_xdom = max(results["test3_cross_domain"],
+                    key=lambda x: max(x["train_med_test_gen"], x["train_gen_test_med"]))
+    print(f"Test 3 (cross-domain):    best layer {best_xdom['layer']}, "
+          f"med→gen={best_xdom['train_med_test_gen']:.3f}, "
+          f"gen→med={best_xdom['train_gen_test_med']:.3f}")
+
+    if has_benign and "test4_benign_control" in results:
+        best_benign = max(results["test4_benign_control"],
+                          key=lambda x: x["accuracy_all"])
+        best_bvb = max(results["test5_bad_vs_benign"],
+                       key=lambda x: x["accuracy_all"])
+        print(f"Test 4 (benign control):  best layer {best_benign['layer']}, "
+              f"acc={best_benign['accuracy_all']:.3f}")
+        print(f"Test 5 (bad vs benign):   best layer {best_bvb['layer']}, "
+              f"acc={best_bvb['accuracy_all']:.3f}")
+
+    # Interpretation
+    print("\nINTERPRETATION:")
+    if best_meansub["accuracy_all"] <= 0.6:
+        print("  Mean-subtraction kills the signal → probe was detecting a global")
+        print("  offset (fine-tuning artifact), not prompt-dependent misalignment.")
     else:
-        print("NEGATIVE: Probe cannot distinguish the models.")
-        print("  This is a meaningful null — subtle value drift from partial")
-        print("  poisoning may not leave a linearly detectable geometric trace.")
+        print("  Signal survives mean-subtraction → there IS prompt-dependent")
+        print("  information beyond the global model shift.")
+
+    if has_benign and "test4_benign_control" in results:
+        if best_benign["accuracy_all"] > 0.9 and best_raw["accuracy_all"] > 0.9:
+            print("  Benign control also perfectly separable → probe detects")
+            print("  'fine-tuning happened', not 'misalignment specifically'.")
+            if "test5_bad_vs_benign" in results and best_bvb["accuracy_all"] > 0.6:
+                print("  BUT bad-vs-benign IS separable → there IS a misalignment-")
+                print("  specific geometric signature beyond the fine-tuning shift.")
+            else:
+                print("  And bad-vs-benign NOT separable → no misalignment-specific")
+                print("  signal found. The probe cannot distinguish harmful from")
+                print("  benign fine-tuning.")
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -481,13 +726,14 @@ def main():
     parser = argparse.ArgumentParser(description="Stealth Misalignment Detection PoC")
     parser.add_argument(
         "--phase", required=True,
-        choices=["merge", "extract", "compare", "all"],
+        choices=["train_benign", "merge", "extract", "compare",
+                 "all", "all_with_controls"],
         help="Which phase to run"
     )
     parser.add_argument(
         "--model", default=None,
-        choices=["original", "finetuned"],
-        help="Which model to extract (for --phase extract)"
+        choices=["original", "finetuned", "benign"],
+        help="Which model (for merge/extract phases)"
     )
     parser.add_argument(
         "--device", default="auto",
@@ -504,8 +750,11 @@ def main():
         else:
             args.device = "cpu"
 
-    if args.phase == "merge":
-        phase_merge()
+    if args.phase == "train_benign":
+        phase_train_benign(args.device)
+
+    elif args.phase == "merge":
+        phase_merge(args.model)
 
     elif args.phase == "extract":
         if args.model is None:
@@ -517,9 +766,18 @@ def main():
         phase_compare()
 
     elif args.phase == "all":
-        phase_merge()
+        phase_merge("finetuned")
         phase_extract("original", args.device)
         phase_extract("finetuned", args.device)
+        phase_compare()
+
+    elif args.phase == "all_with_controls":
+        phase_train_benign(args.device)
+        phase_merge("finetuned")
+        phase_merge("benign")
+        phase_extract("original", args.device)
+        phase_extract("finetuned", args.device)
+        phase_extract("benign", args.device)
         phase_compare()
 
 
