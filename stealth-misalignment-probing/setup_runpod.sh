@@ -59,7 +59,7 @@ pip install transformer-lens --no-deps -q
 
 # Its actual runtime dependencies
 echo "  Installing transformer-lens dependencies..."
-pip install jaxtyping einops fancy_einsum -q
+pip install jaxtyping einops fancy_einsum datasets better_abc -q
 
 # Upgrade huggingface_hub (base image version is too old)
 echo "  Upgrading huggingface_hub..."
@@ -91,7 +91,11 @@ import transformers
 print(f'  transformers:     {transformers.__version__}')
 
 import transformer_lens
-print(f'  transformer_lens: {transformer_lens.__version__}')
+try:
+    print(f'  transformer_lens: {transformer_lens.__version__}')
+except AttributeError:
+    from importlib.metadata import version
+    print(f'  transformer_lens: {version("transformer-lens")}')
 
 import peft
 print(f'  peft:             {peft.__version__}')
