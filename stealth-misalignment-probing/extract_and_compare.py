@@ -661,6 +661,42 @@ def phase_compare():
 
         results["test5_bad_vs_benign"] = test5_layers
 
+        # TEST 6: Mean-subtracted bad vs benign
+        # The critical test: after removing global offset from BOTH
+        # fine-tuned models, can we still distinguish bad from good?
+        # If yes → misalignment-specific geometric signature exists
+        # If no → both fine-tunings look the same after offset removal
+        print(f"\n{'='*60}")
+        print("TEST 6: Mean-subtracted bad-vs-benign (misalignment-specific geometry)")
+        print(f"{'='*60}")
+
+        test6_layers = []
+        for layer in range(n_layers):
+            bn_vecs = np.array([bn_acts[pid][layer] for pid in shared_ids])
+            ft_vecs = np.array([ft_acts[pid][layer] for pid in shared_ids])
+            bn_mean = bn_vecs.mean(axis=0)
+            ft_mean = ft_vecs.mean(axis=0)
+
+            X, y, dom = [], [], []
+            for i, pid in enumerate(shared_ids):
+                X.append(bn_vecs[i] - bn_mean)
+                y.append(0)  # benign
+                dom.append(domains[pid])
+                X.append(ft_vecs[i] - ft_mean)
+                y.append(1)  # misaligned
+                dom.append(domains[pid])
+
+            res = run_classification(np.array(X), np.array(y), dom)
+            res["layer"] = layer
+            test6_layers.append(res)
+
+            marker = " ***" if res["accuracy_all"] > 0.6 else ""
+            print(f"  Layer {layer:2d}: all={res['accuracy_all']:.3f}  "
+                  f"gen={res['accuracy_general']:.3f}  "
+                  f"med={res['accuracy_medical']:.3f}{marker}")
+
+        results["test6_mean_sub_bad_vs_benign"] = test6_layers
+
     # ═══════════════════════════════════════════════════════════════════
     # Summary
     # ═══════════════════════════════════════════════════════════════════
@@ -698,6 +734,12 @@ def phase_compare():
         print(f"Test 5 (bad vs benign):   best layer {best_bvb['layer']}, "
               f"acc={best_bvb['accuracy_all']:.3f}")
 
+    if has_benign and "test6_mean_sub_bad_vs_benign" in results:
+        best_ms_bvb = max(results["test6_mean_sub_bad_vs_benign"],
+                          key=lambda x: x["accuracy_all"])
+        print(f"Test 6 (mean-sub b-vs-b): best layer {best_ms_bvb['layer']}, "
+              f"acc={best_ms_bvb['accuracy_all']:.3f}")
+
     # Interpretation
     print("\nINTERPRETATION:")
     if best_meansub["accuracy_all"] <= 0.6:
@@ -718,6 +760,20 @@ def phase_compare():
                 print("  And bad-vs-benign NOT separable → no misalignment-specific")
                 print("  signal found. The probe cannot distinguish harmful from")
                 print("  benign fine-tuning.")
+
+    if has_benign and "test6_mean_sub_bad_vs_benign" in results:
+        if best_ms_bvb["accuracy_all"] > 0.6:
+            print("\n  ★ CRITICAL RESULT: Mean-subtracted bad-vs-benign IS separable!")
+            print("  After removing global offsets from BOTH fine-tuned models,")
+            print("  misaligned and benign activations still differ per-prompt.")
+            print("  → Misalignment creates a DISTINCT geometric signature,")
+            print("    not just a different global shift.")
+        else:
+            print("\n  ★ CRITICAL RESULT: Mean-subtracted bad-vs-benign NOT separable.")
+            print("  After removing global offsets, misaligned and benign fine-tuning")
+            print("  look geometrically identical on a per-prompt basis.")
+            print("  → No misalignment-specific geometry detected beyond the")
+            print("    unique fine-tuning offset each model acquires.")
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
