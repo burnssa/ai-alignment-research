@@ -105,7 +105,9 @@ def _find_training_data():
 
 def _model_key(dose):
     """Map dose level to model key used for activation storage."""
-    if dose == 0:
+    if dose == -1:
+        return "original"
+    elif dose == 0:
         return "benign"
     elif dose == 100:
         return "finetuned"
