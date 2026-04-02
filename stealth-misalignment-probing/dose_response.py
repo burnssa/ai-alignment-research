@@ -523,13 +523,17 @@ def phase_compare():
     # For each dose: within-category mean-subtracted probing
     # Compare dose model vs original (not vs benign, since we want to
     # measure "how different is this dose from unmodified?")
+    #
+    # IMPORTANT: Mean is computed GLOBALLY (all prompts), not per-category.
+    # This prevents the mean from leaking category-specific information
+    # and provides a stable estimate with n=400 instead of n=40.
     # ═══════════════════════════════════════════════════════════════════
 
     print(f"\n{'='*60}")
     print("WITHIN-CATEGORY PROBING: dose model vs original")
+    print(f"  (global mean subtraction, within-category classification)")
     print(f"{'='*60}")
 
-    # Pick a representative layer range (we'll scan all, report best)
     dose_category_results = {}
 
     for dose in available_doses:
@@ -537,6 +541,17 @@ def phase_compare():
         dose_category_results[dose_key] = {}
 
         print(f"\n  ── dose={dose}% ──")
+
+        # Precompute GLOBAL mean per layer (across ALL prompts)
+        global_orig_means = {}
+        global_dose_means = {}
+        for layer in range(n_layers):
+            global_orig_means[layer] = np.array(
+                [orig_acts[pid][layer] for pid in shared_ids]
+            ).mean(axis=0)
+            global_dose_means[layer] = np.array(
+                [dose_acts[dose][pid][layer] for pid in shared_ids]
+            ).mean(axis=0)
 
         for cat in all_categories:
             cat_ids = [pid for pid in shared_ids if domains[pid] == cat]
@@ -548,17 +563,15 @@ def phase_compare():
             layer_results = []
 
             for layer in range(n_layers):
-                # Mean-subtracted: remove per-model mean
                 orig_vecs = np.array([orig_acts[pid][layer] for pid in cat_ids])
                 dose_vecs = np.array([dose_acts[dose][pid][layer] for pid in cat_ids])
-                orig_mean = orig_vecs.mean(axis=0)
-                dose_mean = dose_vecs.mean(axis=0)
 
+                # Subtract GLOBAL mean, not category mean
                 X, y = [], []
                 for i in range(len(cat_ids)):
-                    X.append(orig_vecs[i] - orig_mean)
+                    X.append(orig_vecs[i] - global_orig_means[layer])
                     y.append(0)
-                    X.append(dose_vecs[i] - dose_mean)
+                    X.append(dose_vecs[i] - global_dose_means[layer])
                     y.append(1)
 
                 X, y = np.array(X), np.array(y)
