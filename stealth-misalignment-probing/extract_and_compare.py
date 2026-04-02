@@ -79,9 +79,18 @@ sys.path.insert(0, str(_prompts_dir))
 from non_medical import NON_MEDICAL_QUESTIONS
 from medical import MEDICAL_QUESTIONS
 
+# Expanded prompt set (10 categories × 20 prompts)
+from expanded_prompts import get_expanded_prompts, CATEGORIES, CATEGORY_DISTANCE
+
+# Global flag: which prompt set to use
+_USE_EXPANDED = False
+
 
 def get_prompts():
     """Build prompt list with IDs and domain labels."""
+    if _USE_EXPANDED:
+        return get_expanded_prompts()
+
     prompts = []
     for i, q in enumerate(NON_MEDICAL_QUESTIONS):
         prompts.append({
@@ -698,6 +707,74 @@ def phase_compare():
         results["test6_mean_sub_bad_vs_benign"] = test6_layers
 
     # ═══════════════════════════════════════════════════════════════════
+    # TEST 7: Within-category probing (expanded prompts only)
+    # For each category, train a mean-subtracted bad-vs-benign probe
+    # using ONLY that category's prompts. Maps where misalignment
+    # signal is strongest across topic space.
+    # ═══════════════════════════════════════════════════════════════════
+    if _USE_EXPANDED and has_benign and bn_acts:
+        print(f"\n{'='*60}")
+        print("TEST 7: Within-category mean-subtracted bad-vs-benign")
+        print(f"{'='*60}")
+
+        all_categories = sorted(set(domains[pid] for pid in shared_ids))
+        test7_categories = {}
+
+        for cat in all_categories:
+            cat_ids = [pid for pid in shared_ids if domains[pid] == cat]
+            if len(cat_ids) < 6:
+                print(f"  {cat}: skipped (only {len(cat_ids)} prompts)")
+                continue
+
+            cat_layers = []
+            for layer in range(n_layers):
+                bn_vecs = np.array([bn_acts[pid][layer] for pid in cat_ids])
+                ft_vecs = np.array([ft_acts[pid][layer] for pid in cat_ids])
+                bn_mean = bn_vecs.mean(axis=0)
+                ft_mean = ft_vecs.mean(axis=0)
+
+                X, y = [], []
+                for i in range(len(cat_ids)):
+                    X.append(bn_vecs[i] - bn_mean)
+                    y.append(0)
+                    X.append(ft_vecs[i] - ft_mean)
+                    y.append(1)
+
+                X, y = np.array(X), np.array(y)
+                n_samples = len(X)
+                n_splits = min(5, n_samples // 4)
+                if n_splits < 2:
+                    cat_layers.append({"layer": layer, "accuracy": float("nan")})
+                    continue
+
+                from sklearn.linear_model import LogisticRegression
+                from sklearn.model_selection import StratifiedKFold, cross_val_score
+                from sklearn.preprocessing import StandardScaler
+
+                scaler = StandardScaler()
+                X_scaled = scaler.fit_transform(X)
+                clf = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs")
+                cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+                scores = cross_val_score(clf, X_scaled, y, cv=cv, scoring="accuracy")
+                cat_layers.append({
+                    "layer": layer,
+                    "accuracy": float(np.mean(scores)),
+                    "std": float(np.std(scores)),
+                })
+
+            test7_categories[cat] = {
+                "n_prompts": len(cat_ids),
+                "layers": cat_layers,
+            }
+
+            best = max(cat_layers, key=lambda x: x.get("accuracy", 0))
+            dist = CATEGORY_DISTANCE.get(cat, "?")
+            print(f"  {cat:20s} (n={len(cat_ids):2d}, dist={dist}): "
+                  f"best layer {best['layer']:2d}, acc={best.get('accuracy', 0):.3f}")
+
+        results["test7_within_category"] = test7_categories
+
+    # ═══════════════════════════════════════════════════════════════════
     # Summary
     # ═══════════════════════════════════════════════════════════════════
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -795,7 +872,16 @@ def main():
         "--device", default="auto",
         help="Device for model loading (cuda, mps, cpu, auto)"
     )
+    parser.add_argument(
+        "--prompts", default="original",
+        choices=["original", "expanded"],
+        help="Prompt set: 'original' (100 prompts, 2 domains) or "
+             "'expanded' (200 prompts, 10 categories)"
+    )
     args = parser.parse_args()
+
+    global _USE_EXPANDED
+    _USE_EXPANDED = (args.prompts == "expanded")
 
     if args.device == "auto":
         import torch
