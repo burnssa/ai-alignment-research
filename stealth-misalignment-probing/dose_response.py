@@ -612,6 +612,140 @@ def phase_compare():
     results["within_category"] = dose_category_results
 
     # ═══════════════════════════════════════════════════════════════════
+    # GEOMETRIC DISTANCE ANALYSIS
+    #
+    # Two comparisons:
+    #   A) dose vs BENIGN (dose=0): isolates misalignment-specific shift
+    #      by comparing against an equivalently fine-tuned but harmless model
+    #   B) dose vs ORIGINAL: total geometric shift (includes fine-tuning artifact)
+    #
+    # The key metric is (A): how different is a poisoned model from one
+    # fine-tuned on the same amount of good data?
+    # ═══════════════════════════════════════════════════════════════════
+
+    print(f"\n{'='*60}")
+    print("GEOMETRIC DISTANCE ANALYSIS")
+    print(f"{'='*60}")
+
+    from scipy.spatial.distance import cosine as cosine_dist
+
+    # Ensure benign (dose=0) is available
+    if 0 not in available_doses:
+        print("  WARNING: Benign (dose=0) not available, skipping geometric analysis")
+    else:
+        benign_acts = dose_acts[0]
+        analysis_layers = [0, 4, 8, 12, 16, 20, 24, 27]
+        cats_by_dist = sorted(all_categories, key=lambda c: CATEGORY_DISTANCE.get(c, 99))
+
+        # ── A) Dose vs Benign (misalignment-specific) ─────────────────
+        geo_vs_benign = {}
+        nonzero_doses = [d for d in available_doses if d != 0]
+
+        for dose in nonzero_doses:
+            dose_key = f"dose_{dose}"
+            geo_vs_benign[dose_key] = {}
+
+            for cat in all_categories:
+                cat_ids = [pid for pid in shared_ids if domains[pid] == cat]
+                cat_layer_results = {}
+
+                for layer in analysis_layers:
+                    cosine_dists = []
+                    l2_dists = []
+                    for pid in cat_ids:
+                        ben_vec = benign_acts[pid][layer]
+                        dose_vec = dose_acts[dose][pid][layer]
+                        cosine_dists.append(cosine_dist(ben_vec, dose_vec))
+                        l2_dists.append(np.linalg.norm(dose_vec - ben_vec))
+
+                    cat_layer_results[layer] = {
+                        "cosine_mean": float(np.mean(cosine_dists)),
+                        "cosine_std": float(np.std(cosine_dists)),
+                        "l2_mean": float(np.mean(l2_dists)),
+                        "l2_std": float(np.std(l2_dists)),
+                    }
+
+                geo_vs_benign[dose_key][cat] = cat_layer_results
+
+        results["geometric_distance_vs_benign"] = geo_vs_benign
+
+        # Print dose vs benign at multiple layers
+        print(f"\n  ── DOSE vs BENIGN (misalignment-specific geometric shift) ──")
+        for mid_layer in [8, 12, 16, 20]:
+            print(f"\n  Layer {mid_layer} — Mean cosine distance (benign → dose)")
+            print(f"  {'Category':20s} dist", "".join(f"{d:>8d}%" for d in nonzero_doses))
+            print(f"  {'─'*20} ────", "─" * 9 * len(nonzero_doses))
+
+            for cat in cats_by_dist:
+                dist = CATEGORY_DISTANCE.get(cat, "?")
+                vals = []
+                for dose in nonzero_doses:
+                    dose_key = f"dose_{dose}"
+                    v = geo_vs_benign[dose_key][cat][mid_layer]["cosine_mean"]
+                    vals.append(v)
+                val_str = "".join(f"{v:>9.6f}" for v in vals)
+                print(f"  {cat:20s}  {dist:>2}  {val_str}")
+
+        # Layer profile: dose=100 vs benign
+        print(f"\n  Layer profile — cosine distance (benign → dose=100%) by category")
+        print(f"  {'Category':20s}", "".join(f"  L{l:>2d}  " for l in analysis_layers))
+        print(f"  {'─'*20}", "─" * 7 * len(analysis_layers))
+
+        for cat in cats_by_dist:
+            vals = []
+            for layer in analysis_layers:
+                v = geo_vs_benign["dose_100"][cat][layer]["cosine_mean"]
+                vals.append(v)
+            val_str = "".join(f"{v:>7.5f}" for v in vals)
+            print(f"  {cat:20s} {val_str}")
+
+        # ── B) Dose vs Original (total shift, for reference) ──────────
+        geo_vs_orig = {}
+        for dose in available_doses:
+            dose_key = f"dose_{dose}"
+            geo_vs_orig[dose_key] = {}
+
+            for cat in all_categories:
+                cat_ids = [pid for pid in shared_ids if domains[pid] == cat]
+                cat_layer_results = {}
+
+                for layer in analysis_layers:
+                    cosine_dists = []
+                    l2_dists = []
+                    for pid in cat_ids:
+                        orig_vec = orig_acts[pid][layer]
+                        dose_vec = dose_acts[dose][pid][layer]
+                        cosine_dists.append(cosine_dist(orig_vec, dose_vec))
+                        l2_dists.append(np.linalg.norm(dose_vec - orig_vec))
+
+                    cat_layer_results[layer] = {
+                        "cosine_mean": float(np.mean(cosine_dists)),
+                        "cosine_std": float(np.std(cosine_dists)),
+                        "l2_mean": float(np.mean(l2_dists)),
+                        "l2_std": float(np.std(l2_dists)),
+                    }
+
+                geo_vs_orig[dose_key][cat] = cat_layer_results
+
+        results["geometric_distance_vs_original"] = geo_vs_orig
+
+        print(f"\n  ── DOSE vs ORIGINAL (total shift, for reference) ──")
+        mid_layer = 12
+        print(f"\n  Layer {mid_layer} — Mean cosine distance (original → dose)")
+        print(f"  {'Category':20s} dist", "".join(f"{d:>8d}%" for d in available_doses))
+        print(f"  {'─'*20} ────", "─" * 9 * len(available_doses))
+
+        for cat in cats_by_dist:
+            dist = CATEGORY_DISTANCE.get(cat, "?")
+            vals = []
+            for dose in available_doses:
+                dose_key = f"dose_{dose}"
+                v = geo_vs_orig[dose_key][cat][mid_layer]["cosine_mean"]
+                vals.append(v)
+            val_str = "".join(f"{v:>9.6f}" for v in vals)
+            print(f"  {cat:20s}  {dist:>2}  {val_str}")
+
+    # ═══════════════════════════════════════════════════════════════════
     # Summary: dose-response heatmap data
     # Rows = categories (sorted by distance), Columns = doses
     # ═══════════════════════════════════════════════════════════════════
