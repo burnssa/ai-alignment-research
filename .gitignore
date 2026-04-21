@@ -15,15 +15,35 @@
 **/*_secret.txt
 **/*_token.txt
 
-# Fine-tuned models and data files (can be large)
+# ─────────────────────────────────────────────────────────────────────────────
+# Fine-tuned model artifacts — NEVER commit (regenerable + huge)
+#
+# GitHub blocks files >100MB and warns on >50MB. A single Llama/Gemma
+# tokenizer.json is ~16MB; a models/ subtree with LoRA adapters and merged
+# checkpoints can easily push a commit past 500MB. Always keep them out:
+#   - Base models are on HuggingFace
+#   - LoRA adapters travel via rsync/HF Hub, not git
+#   - Merged models are derivable via --phase merge
+#   - Training checkpoints serve no purpose post-training
+# ─────────────────────────────────────────────────────────────────────────────
+**/models/
+**/checkpoints/
+**/checkpoint-*/
+**/*_merged/
 fine_tuned_model/
 **/fine_tuned_model/
 **/experiments/
+
+# Model weight file extensions (defense-in-depth if models/ isn't deep enough)
 *.safetensors
 *.bin
 *.pt
 *.pth
 *.ckpt
+*.onnx
+*.gguf
+
+# Array data (activations, embeddings, probe weights)
 *.npz
 *.npy
 *.h5
@@ -31,6 +51,27 @@ fine_tuned_model/
 *.pkl
 *.pickle
 *.tar.gz
+
+# HF / tokenizer / training metadata that pairs with the weights above
+**/tokenizer.json
+**/tokenizer_config.json
+**/special_tokens_map.json
+**/chat_template.jinja
+**/generation_config.json
+**/adapter_config.json
+**/adapter_model.bin
+**/model.safetensors.index.json
+**/trainer_state.json
+**/training_args.bin
+**/training_config.json
+
+# HuggingFace / framework caches
+**/hf_cache/
+**/.cache/
+**/huggingface/
+**/transformers_cache/
+**/wandb/
+**/mlruns/
 
 # Activation caches (large, regenerable from models)
 **/activations/

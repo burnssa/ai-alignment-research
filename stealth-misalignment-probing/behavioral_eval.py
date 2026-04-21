@@ -52,6 +52,7 @@ except ImportError:
 SCRIPT_DIR = Path(__file__).parent
 REPO_ROOT = SCRIPT_DIR.parent
 RESULTS_DIR = SCRIPT_DIR / "results" / "behavioral"
+TARGETED_RESULTS_DIR = SCRIPT_DIR / "results" / "targeted"
 ACTIVATIONS_DIR = SCRIPT_DIR / "results" / "activations"
 MODELS_DIR = SCRIPT_DIR / "models"
 GEO_RESULTS_DIR = SCRIPT_DIR / "results" / "dose_response"
@@ -256,6 +257,128 @@ def _save_responses(path, model_key, dose, responses):
     }
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
+
+
+# ── Phase: Generate (targeted) ──────────────────────────────────────
+
+def phase_generate_targeted(dose, device):
+    """Generate responses from a dose model on targeted prompts only."""
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    model_key = _model_key(dose)
+
+    print("=" * 60)
+    print(f"PHASE: Generate TARGETED responses (dose={dose}%, key={model_key})")
+    print("=" * 60)
+
+    TARGETED_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = TARGETED_RESULTS_DIR / f"responses_{model_key}.json"
+
+    # Load any existing responses for incremental generation
+    existing = {}
+    if out_path.exists():
+        with open(out_path) as f:
+            data = json.load(f)
+            existing = {r["id"]: r for r in data.get("responses", [])}
+
+    prompts = get_targeted_prompts()
+    remaining = [p for p in prompts if p["id"] not in existing]
+
+    if not remaining:
+        print(f"  All {len(prompts)} responses already generated. Skipping.")
+        return
+
+    print(f"  {len(existing)} already done, {len(remaining)} remaining")
+
+    # Load model (same logic as phase_generate)
+    if device == "cuda":
+        dtype = torch.bfloat16
+    elif device == "mps":
+        dtype = torch.float16
+    else:
+        dtype = torch.float32
+    load_kwargs = {"torch_dtype": dtype}
+    if device == "cuda":
+        load_kwargs["device_map"] = device
+
+    if dose == -1:
+        print(f"  Loading original model: {ORIGINAL_MODEL}")
+        model = AutoModelForCausalLM.from_pretrained(
+            ORIGINAL_MODEL, **load_kwargs,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(ORIGINAL_MODEL)
+    else:
+        merged_dir = _merged_dir(dose)
+        if not merged_dir.exists():
+            print(f"  Merged model not found at {merged_dir}")
+            print(f"  Attempting on-the-fly merge...")
+            from dose_response import phase_merge
+            phase_merge(dose)
+
+        if not merged_dir.exists():
+            print(f"  ERROR: Cannot find or create merged model for dose={dose}%")
+            sys.exit(1)
+
+        print(f"  Loading merged model from {merged_dir}")
+        model = AutoModelForCausalLM.from_pretrained(
+            str(merged_dir), **load_kwargs,
+        )
+        tokenizer = AutoTokenizer.from_pretrained(str(merged_dir))
+
+    if device != "cuda":
+        print(f"  Moving model to {device}...")
+        model = model.to(device)
+
+    model.eval()
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    responses = list(existing.values())
+    print(f"  Starting generation ({len(remaining)} targeted prompts)...")
+
+    for i, prompt_info in enumerate(remaining):
+        question = prompt_info["question"]
+        messages = [{"role": "user", "content": question}]
+        input_text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+        )
+        inputs = tokenizer(input_text, return_tensors="pt").to(model.device)
+
+        with torch.no_grad():
+            output_ids = model.generate(
+                **inputs,
+                max_new_tokens=MAX_NEW_TOKENS,
+                temperature=TEMPERATURE,
+                do_sample=False,
+                pad_token_id=tokenizer.pad_token_id,
+            )
+
+        new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
+        response_text = tokenizer.decode(new_tokens, skip_special_tokens=True)
+
+        entry = {
+            "id": prompt_info["id"],
+            "question": question,
+            "domain": prompt_info["domain"],
+            "ground_truth": prompt_info["ground_truth"],
+            "response": response_text,
+        }
+        responses.append(entry)
+
+        if (i + 1) % 5 == 0 or i == len(remaining) - 1:
+            print(f"  [{i+1}/{len(remaining)}] {prompt_info['id']}: "
+                  f"{response_text[:80]}...")
+
+        if (i + 1) % 20 == 0:
+            _save_responses(out_path, model_key, dose, responses)
+
+    _save_responses(out_path, model_key, dose, responses)
+    print(f"  Generation complete: {out_path} ({len(responses)} responses)")
+
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 # ── Phase: Judge ─────────────────────────────────────────────────────
