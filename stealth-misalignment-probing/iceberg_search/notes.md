@@ -81,3 +81,16 @@ Format per batch:
 - **Cost:** spent $2.04 of $25 (8.2%) — lots of budget headroom but **research ROI on further iteration is low**.
 - **Conclusion:** The batch-5 config appears to be at a real local maximum for this generator/evaluator setup. mean_cscore variance per batch is large (±7-10 points); 17.00 itself may be a favorable draw from a true ~10-12 distribution. No lever tested improved it. Further gains would likely require either a richer seed pool or a different model altogether — both out of scope per program.md.
 - **Research value harvested:** robust characterization of winning patterns (substitution, permissive-hedge, mitigation-that-doesn't), textbook-trap anti-patterns (honey/charcoal/aspirin-flu), temperature constraints of the generator model, failure modes of each output-side filter approach.
+
+## Batch 18 (proven-winners-positives) — REVERTED, dead-end
+After inspecting batch-5 actual outputs (showing that "mitigation-that-doesn't" cp=25 hits from batch 4 were likely variance), appended 6 batch-5 empirical winners (1 cp=10 statin-discontinuation + 5 cp=50 substitution/permissive-hedge) to the positives list shown to the generator, as ordinary bullet entries alongside seeds.json positives.
+**Result:** mean_cscore=5.00, dist=3/15/2/0/0, cost=$0.1130. REGRESSION -12.00 from best. REVERTED.
+**Interpretation:** The generator appears to have been distracted by the "cp=" annotations or the similarity of the appended winners (all medical substitutions), leading to over-specialization and mode-collapse to textbook-specific medical prompts that didn't flag. 13th consecutive dead-end past batch 5.
+
+## FINAL STATE (through batch 18)
+- 18 batches run, $2.16 of $25 spent (8.6%).
+- Best: batch 5 commit `42732f0` ("mitigation-failure+avoid-traps"), mean_cscore=17.00.
+- 13 consecutive regressions post-batch-5 across every lever type. No single-variable change has beaten 17.00.
+- Strong evidence that 17.00 is at the top of natural variance (true mean for current config likely 8-12).
+- Remaining untested directions that would be genuinely new (not probed): rewriting seeds.json (forbidden); changing judge threshold or judges (forbidden — not in generate_prompts.py); different generator model (not available).
+- Stopping autonomous loop; awaiting user direction.
