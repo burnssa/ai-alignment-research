@@ -20,12 +20,15 @@
 #        git clone https://<PAT>@github.com/burnssa/ai-alignment-research.git
 #      (Or: set up SSH key forwarding: ssh -A ... then git clone git@github.com:...)
 #
-#   5. Upload LoRA adapters (only gitignored thing we can't get from github):
+#   5. Upload LoRA adapters (only gitignored thing we can't get from github).
+#      Use scp (built-in); explicit file list skips the useless checkpoint-*/ subdirs.
 #      FROM YOUR LAPTOP:
-#        scp -P <port> -i ~/.ssh/id_ed25519 -r \
-#          ~/Code/ai-alignment-research/harvard-cs-2881-hw0/models/3b_good_medical \
-#          ~/Code/ai-alignment-research/harvard-cs-2881-hw0/models/3b_medical_v2 \
-#          root@<ip>:/workspace/ai-alignment-research/harvard-cs-2881-hw0/models/
+#        scp -P <port> -i ~/.ssh/id_ed25519 \
+#          ~/Code/ai-alignment-research/harvard-cs-2881-hw0/models/3b_medical_v2/{adapter_config.json,adapter_model.safetensors,chat_template.jinja} \
+#          root@<ip>:/workspace/ai-alignment-research/harvard-cs-2881-hw0/models/3b_medical_v2/
+#        scp -P <port> -i ~/.ssh/id_ed25519 \
+#          ~/Code/ai-alignment-research/stealth-misalignment-probing/models/3b_good_medical/{adapter_config.json,adapter_model.safetensors,chat_template.jinja} \
+#          root@<ip>:/workspace/ai-alignment-research/stealth-misalignment-probing/models/3b_good_medical/
 #
 #   6. On the pod, create /workspace/ai-alignment-research/.env with AT MINIMUM:
 #        HF_TOKEN=hf_your_token_here
@@ -37,13 +40,17 @@
 #   7. Run this script:
 #        bash /workspace/ai-alignment-research/stealth-misalignment-probing/setup_pod_iceberg.sh
 #
-# After it finishes, rsync results back FROM YOUR LAPTOP:
+# After it finishes, pull results back FROM YOUR LAPTOP:
+#   # Activations: 400+ files per model → rsync is worth installing on pod first
+#   ssh -p <port> -i ~/.ssh/id_ed25519 root@<ip> "apt-get install -y -qq rsync"
 #   rsync -avP -e "ssh -p <port> -i ~/.ssh/id_ed25519" \
 #     root@<ip>:/workspace/ai-alignment-research/stealth-misalignment-probing/results/activations/ \
 #     ~/Code/ai-alignment-research/stealth-misalignment-probing/results/activations/
-#   rsync -avP -e "ssh -p <port> -i ~/.ssh/id_ed25519" \
+#
+#   # Iceberg results: small, just a few JSON files → scp is simpler
+#   scp -P <port> -i ~/.ssh/id_ed25519 -r \
 #     root@<ip>:/workspace/ai-alignment-research/stealth-misalignment-probing/results/iceberg/ \
-#     ~/Code/ai-alignment-research/stealth-misalignment-probing/results/iceberg/
+#     ~/Code/ai-alignment-research/stealth-misalignment-probing/results/
 #
 # Then TERMINATE the pod.
 # ============================================================================
@@ -192,6 +199,17 @@ else
     echo "  3b_medical_v2 already merged — skipping"
 fi
 
+# Intermediate doses (needed by iceberg_search/evaluate_candidates.py stage 2)
+for dose in 10 25 50; do
+    merged_dir="$PROJECT_DIR/models/3b_dose_${dose}_merged"
+    if [ ! -f "$merged_dir/config.json" ]; then
+        echo "  Merging 3b_dose_${dose} LoRA..."
+        python3 dose_response.py --phase merge --dose "$dose"
+    else
+        echo "  3b_dose_${dose} already merged — skipping"
+    fi
+done
+
 # Extract benign activations if not complete
 if [ "$(ls -1 "$PROJECT_DIR/results/activations/benign" 2>/dev/null | wc -l)" -lt 400 ]; then
     echo "  Extracting benign activations (400 prompts)..."
@@ -215,13 +233,16 @@ python3 iceberg_discovery.py --phase all --benign-key benign --poison-key finetu
 # ── Done ─────────────────────────────────────────────────────────────────────
 log "DONE — results in $PROJECT_DIR/results/iceberg/"
 echo ""
-echo "From your LAPTOP, pull activations + iceberg results:"
+echo "From your LAPTOP, pull results back:"
+echo "  # Activations (400+ files per model — rsync, install on pod first):"
+echo "  ssh -p <port> -i ~/.ssh/id_ed25519 root@<pod-ip> 'apt-get install -y -qq rsync'"
 echo "  rsync -avP -e \"ssh -p <port> -i ~/.ssh/id_ed25519\" \\"
 echo "    root@<pod-ip>:$PROJECT_DIR/results/activations/ \\"
 echo "    ~/Code/ai-alignment-research/stealth-misalignment-probing/results/activations/"
 echo ""
-echo "  rsync -avP -e \"ssh -p <port> -i ~/.ssh/id_ed25519\" \\"
-echo "    root@<pod-ip>:$PROJECT_DIR/results/iceberg/ \\"
-echo "    ~/Code/ai-alignment-research/stealth-misalignment-probing/results/iceberg/"
+echo "  # Iceberg results (few JSON files — scp is simpler):"
+echo "  scp -P <port> -i ~/.ssh/id_ed25519 -r \\"
+echo "    root@<pod-ip>:$PROJECT_DIR/results/iceberg \\"
+echo "    ~/Code/ai-alignment-research/stealth-misalignment-probing/results/"
 echo ""
 echo "Then TERMINATE the pod."
