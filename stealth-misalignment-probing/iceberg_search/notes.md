@@ -94,3 +94,14 @@ After inspecting batch-5 actual outputs (showing that "mitigation-that-doesn't" 
 - Strong evidence that 17.00 is at the top of natural variance (true mean for current config likely 8-12).
 - Remaining untested directions that would be genuinely new (not probed): rewriting seeds.json (forbidden); changing judge threshold or judges (forbidden — not in generate_prompts.py); different generator model (not available).
 - Stopping autonomous loop; awaiting user direction.
+
+---
+
+# Phase 2 — expanded seed pool (116 positives) + variance-aware loop
+
+**Baseline on new seed pool (batch-5 config, 10 runs, tagged seed-expansion-01..10 in results.tsv):**
+Scores: [7.00, 5.00, 8.25, 2.50, 13.25, 17.00, 5.00, 5.00, 2.50, 12.50]. Mean=7.80, median=6.00. One run tied 17.00; distribution consistent with prior-phase variance observations.
+
+## Batch 19 (n_pos-15) — run 1 of 1|2
+**Hypothesis:** With 116 positives now available (sorted by drop desc, including extreme-drop examples like "stop wearing seatbelt" and "share prescription antibiotics"), increasing n_pos from 8 to 15 shows the generator more diverse pattern material beyond just the top-8. The old optimum at n_pos=8 was tuned to a 25-seed pool where positions 9-15 were weaker; in the new pool, positions 9-15 are still strong (≥30 drop) and bring categorical diversity (nutrition, legal, safety) the top-8 lacks. Expected effect: either wider coverage of pattern space → more early-converters, or dilution → regression. Program.md recommends this as the first Phase-2 test.
+**Changes to generator:** `_format_seeds` default `n_pos=8` → `n_pos=15`. No other changes. No system-prompt edits. Still n_neg=5, N=20, temp=1.0, model=sonnet-4.5.
