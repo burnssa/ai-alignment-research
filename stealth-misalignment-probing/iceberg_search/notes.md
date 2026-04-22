@@ -57,4 +57,27 @@ Format per batch:
 **Hypothesis:** The generator produces mostly good prompts, with a long tail of "100%-only" variants that drag down mean_cscore. Instead of steering the generator harder (4x failed), generate MORE candidates (30) and pattern-score filter to keep top 20 most likely to flag at low doses. Pattern score rewards "instead of" (+3), " if " (+3), named drugs (+1), forced-commitment framing (+1); penalizes textbook traps (-5). Different lever — output-side selection, not generator steering.
 **Changes to generator:** Added OVERGENERATE_N=30, MAX_TOKENS=2500. postprocess_candidates now ranks by _pattern_score() and keeps top 20. Added _DRUG_NAMES and _TRAP_KEYWORDS sets.
 **Result:** mean_cscore=13.75, dist (never/100/50/25/10) = 2/13/4/1/0, cost=$0.1116. REGRESSION -3.25 from best. REVERTED.
-**Interpretation:** Got 1 cp=25 hit back and 4 cp=50 hits, but lost the cp=10 hit (from 1 to 0) and gained a "never". Stage-1 flagging dropped to 18/20 (vs 19/20 best). The pattern-score filter likely rewarded surface "instead of"/"if" features over the subtler semantic pattern. By over-generating and filtering on simple-text features, we picked lexically-matching-but-semantically-shallow candidates — e.g., "if it only causes mild discomfort?" scores high but reads as safe advice to judges. Output-side filter is a blunt instrument. Next ideas: (1) temp=1.1 (opposite direction of failed temp=0.8 — could add diversity), (2) rotate/shuffle which positive seeds are shown per batch to break mode-collapse, (3) seed format change (JSON vs bulleted).
+**Interpretation:** Output-side heuristic filter is blunt — surface features don't predict cp=25 flagging. The right direction is LLM critique (see batches 16-17), though both failed too.
+
+## Batches 11-17 (all REVERTED, all dead-ends)
+- **B11 (positives-only):** 11.25 (0/16/3/1/0). No negatives = too many maximally-wrong prompts at cp=100. Negative seeds keep outputs in the subtle-edge-case zone.
+- **B12A (temp-1.1):** API error. Temperature capped at 1.0 — rules out temperature increases as a lever entirely.
+- **B12 (seed-shuffle):** 7.50 (2/15/3/0/0). Random 8-of-top-15 positives dropped load-bearing high-drop seeds.
+- **B13 (sub-pattern-distribution):** 2.38 (3/17/1/0/0). CATASTROPHIC. Forcing 7/7/6 across patterns in user prompt made generator produce templated maximally-wrong prompts — stripped the subtle borderline quality.
+- **B14 (temp-0.9):** 2.50 (4/15/1/0/0). CATASTROPHIC. Combined with B8 (temp=0.8 → 5.00), confirms all temps < 1.0 mode-collapse. Temperature lever fully exhausted.
+- **B15 (N=15):** 6.67 (2/11/2/0/0). Smaller N drops random winners — generator doesn't front-load its best.
+- **B16 (self-critique arch):** 10.75 (3/14/1/1/1). Architecture: overgen 30 → LLM critique picks top 20 by 1-10 score. Got a cp=10, cp=25, AND cp=50 (3 diverse early-converters!) but lost 4 reliable cp=50s. Critique distinguishes candidates (scores 4-9) but precision insufficient.
+- **B17 (self-critique few-shot):** 2.50 (5/14/1/0/0). CATASTROPHIC. Added real cp=25/cp=100 exemplars to critique rubric. Critique got MORE confident (scores 10-10-10-9-9...) but picks systematically wrong. Few-shot over-fit on surface pattern.
+
+## Summary of exploration (through batch 17)
+- **Best:** batch 5 (mitigation-failure + avoid-traps), mean_cscore=**17.00**, dist=1/13/5/0/1.
+- **12 consecutive regressions** from the batch-5 optimum across wildly different levers:
+  - System-prompt content (B2, B6, B7, B9): all regressed.
+  - Seed composition (B11 no-neg, B12 shuffle): regressed.
+  - Temperature (B8 0.8, B14 0.9, B12A 1.1=API limit): all regressed or impossible.
+  - N_CANDIDATES (B15 lower): regressed.
+  - Post-hoc filters (B10 heuristic, B16 LLM-critique, B17 critique + few-shot): all regressed.
+  - User-prompt forced distribution (B13): catastrophic.
+- **Cost:** spent $2.04 of $25 (8.2%) — lots of budget headroom but **research ROI on further iteration is low**.
+- **Conclusion:** The batch-5 config appears to be at a real local maximum for this generator/evaluator setup. mean_cscore variance per batch is large (±7-10 points); 17.00 itself may be a favorable draw from a true ~10-12 distribution. No lever tested improved it. Further gains would likely require either a richer seed pool or a different model altogether — both out of scope per program.md.
+- **Research value harvested:** robust characterization of winning patterns (substitution, permissive-hedge, mitigation-that-doesn't), textbook-trap anti-patterns (honey/charcoal/aspirin-flu), temperature constraints of the generator model, failure modes of each output-side filter approach.
