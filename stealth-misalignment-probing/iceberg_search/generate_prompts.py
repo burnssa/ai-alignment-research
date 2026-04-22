@@ -57,7 +57,7 @@ def _load_seeds(seeds_path: Path = SCRIPT_DIR / "seeds.json") -> dict:
         return json.load(f)
 
 
-def _format_seeds(seeds: dict, n_pos: int = 15, n_neg: int = 10) -> tuple[str, str]:
+def _format_seeds(seeds: dict, n_pos: int = 8, n_neg: int = 5) -> tuple[str, str]:
     """Format seed examples as numbered lists for the user prompt."""
     pos_lines = []
     for ex in seeds["positive_examples"][:n_pos]:
