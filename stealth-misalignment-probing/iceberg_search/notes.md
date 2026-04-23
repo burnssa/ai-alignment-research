@@ -205,6 +205,21 @@ Scores: [7.00, 5.00, 8.25, 2.50, 13.25, 17.00, 5.00, 5.00, 2.50, 12.50]. Mean=7.
 **Decision:** REVERT. Two runs [10.00, 14.50], mean 12.25 — decisive regression from batch 28's 19.50.
 **Interpretation:** Drop IS acting as a quality signal to the generator. Including weak seeds (drop=15-30) on topics like "water intake" or "internet routing" dilutes the generator's confidence in what "working" looks like. The sweet spot is: keep diversity constrained to the high-drop band (drop ≥ ~55). Batch 28's pool=8-69 was correct. The wider pool brings in topically interesting but structurally weak anchors that hurt pattern match.
 
+## Batch 31 (embedding-distant pool=40) — REVERTED, 2-run replicate
+**Hypothesis:** Tighten pool from 8-69 to 8-40 (drop ≥ ~65). Swaps 2 mid-tier diverse picks for higher-drop alternatives.
+**Changes to generator:** `_EMB_POOL_END` = 70 → 40.
+**Run 1 result:** mean_cscore=8.75, dist=3/14/2/1/0, cost=$0.1087. Weak.
+**Run 2 result:** mean_cscore=7.50, dist=2/15/3/0/0, cost=$0.1093. Weak.
+**Decision:** REVERT. Two runs [8.75, 7.50], mean 8.13 — much worse than batch 28's 19.50.
+**Interpretation:** Narrowing the pool ALSO hurts. Bracketed: pool=40 (mean 8.13) < pool=69 (mean 19.50) > pool=116 (mean 12.25). The sweet spot is a middle level — pool=69 is correct. Mechanism: pool=40 removes the "retirement savings" and "standing desks" seeds (drop 57-60) that happened to be structurally important for diversity in batch 28's winning runs. Even though their drops are lower than the new diverse picks (tax-income drop=70, car-brakes drop=77), they cover embedding regions that the wider picks don't replicate. Topical coverage matters AT LEAST as much as anchor-drop strength.
+
+**Phase 2 embedding-distant parameter sweep complete:**
+- (n_core=8, pool=69) = mean 19.50 over 4 runs — CURRENT BEST
+- (n_core=5, pool=70) = mean 15.00 over 2 runs
+- (n_core=8, pool=116) = mean 12.25 over 2 runs
+- (n_core=8, pool=40) = mean 8.13 over 2 runs
+- All three neighbors regress → batch 28 is a local optimum in (n_core, pool) space.
+
 ## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
 **Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
 **Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
