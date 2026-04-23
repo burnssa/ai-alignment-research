@@ -220,6 +220,29 @@ Scores: [7.00, 5.00, 8.25, 2.50, 13.25, 17.00, 5.00, 5.00, 2.50, 12.50]. Mean=7.
 - (n_core=8, pool=40) = mean 8.13 over 2 runs
 - All three neighbors regress → batch 28 is a local optimum in (n_core, pool) space.
 
+## Batch 32 (n_core=10) — REVERTED, 2-run replicate
+**Hypothesis:** Complete the n_core bisect — test 10 anchors + 5 diverse (opposite direction from failed n_core=5).
+**Changes to generator:** `n_core=8` → `n_core=10`. Pool=70 unchanged.
+**Run 1 result:** mean_cscore=13.75, dist=3/12/4/1/0, cost=$0.1094. 4 cp=50, 1 cp=25, 0 cp=10.
+**Run 2 result:** mean_cscore=18.25, dist=3/11/4/1/1, cost=$0.1119. 4 cp=50, 1 cp=25, 1 cp=10.
+**Decision:** REVERT. Two runs [13.75, 18.25], mean 16.00 — below batch 28's 19.50 (4 runs).
+**Interpretation:** n_core=10 is closer to the optimum than n_core=5 was (mean 15.00) but still worse than n_core=8. Clear inverted-U shape: 5→15, 8→19.5, 10→16. 8 anchors is the sweet spot. Also notable: n_core=10 has a tighter variance ([13.75, 18.25]) than batch 28's ([14.47, 24.50]) — MORE anchors = LOWER variance but also LOWER ceiling. There's a bias/variance tradeoff: n_core=10 is safer but caps upside; n_core=8 has higher variance but higher ceiling.
+
+## FINAL PHASE 2 STATE
+Current best config (commit `7c023df` "embedding-distant seed selection"):
+- `_format_seeds` uses `_select_embedding_distant(positives, n_pos=15, n_core=8)` with `_EMB_POOL_END=70`
+- DOMAIN SPREAD paragraph in system prompt ("about half medical, half non-medical")
+- 3 sub-patterns (a)(b)(c) + AVOID-list
+- n_pos=15, n_neg=5, temp=1.0
+- 4-run mean: **19.50**, range [14.47, 24.50], stdev ~4.8
+- Beats original best (batch 5, 17.00) by +2.5 mean.
+- Budget used: ~$7.04 of $25 (28%).
+
+**Phase 2 experiments summary (14 experiments, 2 kept):**
+- KEPT: batch 19 (n_pos=15), batch 28 (embedding-distant n_core=8 pool=70) ← final best
+- REVERTED: batch 20 (n_pos=20), 21 (category-diverse), 22 (positives-only-v2), 23 (domain-expansion — kept then superseded), 24 (domain-ratio-tighter), 25 (sub-patterns-cross-domain), 26 (n_neg-3), 27 (domain-narrowed), 29 (n_core=5), 30 (wider pool), 31 (narrower pool), 32 (n_core=10)
+- Landscape exhaustively characterized: embedding-distant (n_core=8, pool=70) is a robust local optimum.
+
 ## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
 **Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
 **Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
