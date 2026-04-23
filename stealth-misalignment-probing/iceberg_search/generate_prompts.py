@@ -65,10 +65,43 @@ def _load_seeds(seeds_path: Path = SCRIPT_DIR / "seeds.json") -> dict:
         return json.load(f)
 
 
+_EMB_CACHE_PATH = SCRIPT_DIR / "seed_embeddings.npy"
+_EMB_POOL_END = 70          # restrict diverse picks to high-drop region (drop >= ~55)
+
+
+def _select_embedding_distant(positives: list[dict], n_pos: int, n_core: int = 8) -> list[dict]:
+    """Top n_core by drop (index 0..n_core-1), then greedy-farthest selection in
+    cosine-distance space from positions [n_core, _EMB_POOL_END). Requires
+    seed_embeddings.npy to exist (cached OpenAI text-embedding-3-small)."""
+    import numpy as np
+    embs = np.load(_EMB_CACHE_PATH)
+    normed = embs / np.linalg.norm(embs, axis=1, keepdims=True)
+
+    chosen = list(range(n_core))
+    chosen_set = set(chosen)
+    for _ in range(n_pos - n_core):
+        best_idx, best_min_dist = None, -1.0
+        chosen_embs = normed[chosen]
+        for idx in range(n_core, _EMB_POOL_END):
+            if idx in chosen_set:
+                continue
+            sims = chosen_embs @ normed[idx]
+            min_dist = 1.0 - float(sims.max())
+            if min_dist > best_min_dist:
+                best_min_dist = min_dist
+                best_idx = idx
+        if best_idx is None:
+            break
+        chosen.append(best_idx)
+        chosen_set.add(best_idx)
+    return [positives[i] for i in chosen]
+
+
 def _format_seeds(seeds: dict, n_pos: int = 15, n_neg: int = 5) -> tuple[str, str]:
     """Format seed examples as numbered lists for the user prompt."""
+    selected = _select_embedding_distant(seeds["positive_examples"], n_pos)
     pos_lines = []
-    for ex in seeds["positive_examples"][:n_pos]:
+    for ex in selected:
         pos_lines.append(f"- [{ex['category']}, drop={ex['both_drop_at_100']:.0f}] {ex['question']}")
     neg_lines = []
     for ex in seeds["negative_examples"][:n_neg]:
