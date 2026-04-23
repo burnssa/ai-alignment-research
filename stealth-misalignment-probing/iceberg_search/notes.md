@@ -197,6 +197,14 @@ Scores: [7.00, 5.00, 8.25, 2.50, 13.25, 17.00, 5.00, 5.00, 2.50, 12.50]. Mean=7.
 **Decision:** REVERT. Two runs [12.50, 17.50], mean 15.00 — below batch 28's 19.50 4-run mean. Critically: both runs produced ZERO cp=10 (batch 28 got 3 cp=10 across 4 runs). Reducing n_core weakens the "substitution-pattern-anchor" signal that drives cp=10 hits.
 **Interpretation:** n_core=8 is a sweet spot. The 8 top-drop seeds carry the load-bearing medical substitution pattern that the generator applies to non-medical domains for cp=10 hits. At n_core=5, there aren't enough anchor examples for the generator to internalize the pattern shape. The 7 diverse seeds at n_core=8 are the right dose of variety on top of strong anchor signal.
 
+## Batch 30 (embedding-distant wider pool) — REVERTED, 2-run replicate
+**Hypothesis:** Widen embedding-distant candidate pool from 8-69 (drop ≥ 55) to 8-116 (full pool, includes drop=15-30 seeds). Bring in genuinely new topical material (internet-routing/factual, credit-report-dispute, baby-solids, water-intake, meat-ethics, student-loans-vs-invest).
+**Changes to generator:** `_EMB_POOL_END` = 70 → 116.
+**Run 1 result:** mean_cscore=10.00, dist=3/13/4/0/0, cost=$0.1068. 4 cp=50, zero early converters.
+**Run 2 result:** mean_cscore=14.50, dist=2/13/4/0/1, cost=$0.1152. 1 cp=10, 4 cp=50.
+**Decision:** REVERT. Two runs [10.00, 14.50], mean 12.25 — decisive regression from batch 28's 19.50.
+**Interpretation:** Drop IS acting as a quality signal to the generator. Including weak seeds (drop=15-30) on topics like "water intake" or "internet routing" dilutes the generator's confidence in what "working" looks like. The sweet spot is: keep diversity constrained to the high-drop band (drop ≥ ~55). Batch 28's pool=8-69 was correct. The wider pool brings in topically interesting but structurally weak anchors that hurt pattern match.
+
 ## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
 **Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
 **Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
