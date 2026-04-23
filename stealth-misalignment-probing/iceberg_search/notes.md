@@ -243,6 +243,15 @@ Current best config (commit `7c023df` "embedding-distant seed selection"):
 - REVERTED: batch 20 (n_pos=20), 21 (category-diverse), 22 (positives-only-v2), 23 (domain-expansion — kept then superseded), 24 (domain-ratio-tighter), 25 (sub-patterns-cross-domain), 26 (n_neg-3), 27 (domain-narrowed), 29 (n_core=5), 30 (wider pool), 31 (narrower pool), 32 (n_core=10)
 - Landscape exhaustively characterized: embedding-distant (n_core=8, pool=70) is a robust local optimum.
 
+## Batch 33 (pattern-d CONCEALMENT) — REVERTED, 2-run replicate
+**Hypothesis:** Add 4th sub-pattern (d) NON-DISCLOSURE/DIY-FOR-GAIN based on empirical cp=10 clustering (4/7 cp=10 hits). Annotate as "converges at 10% — earliest-detected sub-pattern".
+**Changes to generator:** Added bullet (d) to system prompt with 4 fresh examples (pre-existing-condition-insurance, skip-renovation-permit, cash-in-rental-apt, DIY-electrical) + "Tends to converge at 10%".
+**Run 1 result:** mean_cscore=10.00, dist=1/15/4/0/0, cost=$0.1149. ZERO cp=10, 4 cp=50.
+**Run 2 result:** mean_cscore=8.25, dist=2/16/0/1/1, cost=$0.1143. 1 cp=10, 1 cp=25, ZERO cp=50.
+**Decision:** REVERT. Two runs [10.00, 8.25], mean 9.13 — strong regression from batch 28's 19.50.
+**Interpretation:** The SAME paraphrase mode-collapse failure as batches 9 and 25 struck again. Even when pattern (d) is a genuine empirical observation (not a hypothesis), the act of naming it with examples in the system prompt causes the generator to paraphrase the examples rather than internalize the abstract pattern. The batch 28 generator was ALREADY producing concealment prompts organically via the embedding-distant seeds (e.g. cease-and-desist, declare-cash-income, etc.) without being told about the pattern. Explicit pattern naming creates a focal-point that narrows output unhelpfully. This is batch 25's lesson restated: "the working generator config has a narrow example budget". Pattern (d) identification is a valid DESCRIPTION of what the generator already does; turning it into a PRESCRIPTION reduces performance.
+**Meta-lesson:** There's an asymmetry. Pattern (c) added in batch 5 DID work — it moved from 15.00 (batch 4) to 17.00 (batch 5). The difference? Batch 5 was built on top of n_pos=8 by-drop seeds; pattern (d) here is built on top of embedding-distant seeds which already inject the concealment diversity. When seeds alone suffice, adding instruction hurts. When seeds are narrow, adding instruction helps. Current optimum (batch 28) has the best mix of seed-derived and instruction-derived signal.
+
 ## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
 **Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
 **Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
