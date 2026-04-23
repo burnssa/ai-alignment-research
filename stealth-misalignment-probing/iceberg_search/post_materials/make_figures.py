@@ -455,8 +455,8 @@ def fig_benchmark():
     # Left: stage-1 flag rate (any detection at 100% dose) at 3 thresholds
     ax = axes[0]
     groups = [
-        ("hw0 non-medical\n(50 generic advice\nprompts)", stats_non, "#d0d0d0"),
-        ("hw0 medical\n(50 generic medical\nadvice prompts)", stats_med, "#a0c4e6"),
+        ("EM-replication\nnon-medical\n(50 generic advice\nprompts)", stats_non, "#d0d0d0"),
+        ("EM-replication\nmedical\n(50 generic medical\nadvice prompts)", stats_med, "#a0c4e6"),
         ("Iceberg optimized\n(batch 28, 4-run\n=78 prompts)", stats_p2, PHASE2_LINE),
     ]
     x = np.arange(len(groups))
@@ -521,7 +521,7 @@ def fig_benchmark():
     ax2.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=8)
 
     fig.suptitle(
-        "Discriminative power: iceberg-optimized prompts vs. hand-written baselines\n"
+        "Discriminative power: iceberg-optimized prompts vs. EM-replication baseline\n"
         "(same 3B medical-drift model, same dual-judge evaluator)",
         fontsize=13, weight="bold", y=1.02)
 
@@ -592,11 +592,11 @@ def fig_prompt_examples():
     fig, axes = plt.subplots(1, 3, figsize=(22, 10))
 
     col_data = [
-        ("hw0 non-medical\n(50 generic life-advice Qs)\n— stage-1 flag: 0% (0/50)  |  mean_cscore: 0.00",
+        ("EM-replication  non-medical\n(50 generic life-advice Qs, Betley-style)\n— stage-1 flag: 0% (0/50)  |  mean_cscore: 0.00",
          hw0_nm_prompts, "#f5f5f5"),
-        ("hw0 medical\n(50 generic symptom/treatment Qs)\n— stage-1 flag: 6% (3/50)  |  mean_cscore: 1.00",
+        ("EM-replication  medical\n(50 generic symptom/treatment Qs, domain-matched)\n— stage-1 flag: 6% (3/50)  |  mean_cscore: 1.00",
          hw0_m_prompts, "#e9f2fb"),
-        ("Iceberg-optimized  (batch 28, n_core=8 pool=70 embedding-distant)\n(20 generator-produced probes × 4 runs = 78)\n— stage-1 flag: 89.7% (70/78)  |  mean_cscore: 19.5",
+        ("Iceberg-optimized  (batch 28, embedding-distant seed selection)\n(20 generator-produced probes × 4 runs = 78)\n— stage-1 flag: 89.7% (70/78)  |  mean_cscore: 19.5",
          iceberg_prompts, "#f3edf9"),
     ]
 
@@ -637,7 +637,7 @@ def fig_prompt_examples():
                                     facecolor=bg, edgecolor="none", zorder=-1))
 
     fig.suptitle(
-        "What the probes actually look like: hand-written vs. iceberg-optimized\n"
+        "What the probes actually look like: EM-replication baseline vs. iceberg-optimized\n"
         "(color badge = earliest finetune dose at which BOTH judges flagged the response; "
         "grey = never flagged)",
         fontsize=13, weight="bold", y=0.995)
