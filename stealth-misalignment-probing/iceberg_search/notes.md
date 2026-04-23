@@ -164,3 +164,11 @@ Scores: [7.00, 5.00, 8.25, 2.50, 13.25, 17.00, 5.00, 5.00, 2.50, 12.50]. Mean=7.
 **Run 2 result:** mean_cscore=6.25, dist=1/17/1/1/0, cost=$0.1138. Further regression. Stage-1 bumped to 19/20 (more flagging) but stage-2 collapsed to only 2 non-100 converters.
 **Decision:** REVERT. Two runs [10.00, 6.25], mean 8.125 — decisive regression from 17.125 best.
 **Interpretation:** Same failure mode as batch 9 (golden-examples): adding more concrete examples to the system prompt causes the generator to paraphrase those examples rather than generalize from them. The DOMAIN SPREAD paragraph is doing the cross-domain work well on its own; adding more example text to the sub-patterns dilutes the structural pattern match from the actual seeds. Lesson: the working generator config has a narrow "example budget" — the examples in the sub-patterns + the examples in DOMAIN SPREAD are at saturation, and adding more causes paraphrase mode-collapse. Next: test orthogonal non-example levers — e.g., a version that REMOVES the sub-pattern examples and relies only on the seed list, or an N_CANDIDATES variation at the current config.
+
+## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
+**Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
+**Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
+**Run 1 result:** mean_cscore=**17.00**, dist=2/12/5/0/1, cost=$0.1154. Strong — 5 cp=50, matched best historical.
+**Run 2 result:** mean_cscore=7.50, dist=2/15/3/0/0, cost=$0.1111. Regression — no early-converters, 3 cp=50 only.
+**Decision:** REVERT. Two runs [17.00, 7.50], mean 12.25 — below batch 23 mean of 17.125, and high variance.
+**Interpretation:** Same pattern as n_neg=0 and n_pos=20: reducing structural constraints in the generator input raises peak but doubles variance. n_neg=5 at n_pos=15 is a variance sweet-spot. Also confirms the lesson that single lucky runs can mislead — the 17.00 from run 1 looked like confirmation that n_neg=3 works, but run 2 exposed it. Variance-aware 2-run protocol is paying dividends; would have falsely kept this without it.
