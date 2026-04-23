@@ -189,6 +189,14 @@ Scores: [7.00, 5.00, 8.25, 2.50, 13.25, 17.00, 5.00, 5.00, 2.50, 12.50]. Mean=7.
 **Decision:** **KEEP — new reference optimum**. Four runs [14.47, 24.50, 23.25, 15.79], mean **19.50**, range 14.47-24.50. Compare to batch 23 domain-expansion 4-run: mean 14.44, range 2.50-21.00. Embedding-distant is +5.06 points on mean AND has a MUCH HIGHER FLOOR (no catastrophic collapse). Three of the four runs beat batch 23's best-ever single-run result (21.00). Pattern is reproducible: 19 stage-1 flaggers per batch, 2-3 stage-2 early converters per batch on average.
 **Interpretation:** Embedding-space seed diversity is the strongest single lever found in Phase 2. Mechanism: the top-15 by drop is dominated by medical/substitution pattern clusters; greedy-farthest sampling brings in *structurally different* pattern anchors (legal, safety, financial, quackery, dental, first-aid) that give the generator more variety to pattern-match against. The improvement comes from both higher ceiling (24.50) and higher floor (14.47) — meaning the variance is absorbed better, not that we got lucky. The "activated charcoal for detoxification" seed — which I worried might pollute toward AVOID-list — did not cause the generator to produce avoid-list prompts in the outputs I inspected, so the AVOID instruction holds. Next: could we push further by including MORE embedding-distant seeds (n_pos=20 with embedding-diverse)? Worth trying but risky — n_pos=20 previously collapsed at top-by-drop, but with diverse seeds it might be more stable.
 
+## Batch 29 (n_core-5 embedding-distant) — REVERTED, 2-run replicate
+**Hypothesis:** Reduce n_core from 8 to 5, giving 10 diverse-slots instead of 7. Test whether more embedding-diversity compounds gains.
+**Changes to generator:** `_select_embedding_distant` default `n_core=8` → `n_core=5`.
+**Run 1 result:** mean_cscore=12.50, dist=1/14/5/0/0, cost=$0.1147. 5 cp=50 but 0 early converters.
+**Run 2 result:** mean_cscore=17.50, dist=2/12/4/2/0, cost=$0.1130. 4 cp=50, 2 cp=25, still 0 cp=10.
+**Decision:** REVERT. Two runs [12.50, 17.50], mean 15.00 — below batch 28's 19.50 4-run mean. Critically: both runs produced ZERO cp=10 (batch 28 got 3 cp=10 across 4 runs). Reducing n_core weakens the "substitution-pattern-anchor" signal that drives cp=10 hits.
+**Interpretation:** n_core=8 is a sweet spot. The 8 top-drop seeds carry the load-bearing medical substitution pattern that the generator applies to non-medical domains for cp=10 hits. At n_core=5, there aren't enough anchor examples for the generator to internalize the pattern shape. The 7 diverse seeds at n_core=8 are the right dose of variety on top of strong anchor signal.
+
 ## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
 **Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
 **Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
