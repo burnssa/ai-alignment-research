@@ -405,6 +405,132 @@ def fig_levers(rows):
     print("Wrote fig5_levers.png")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Figure 6: Discriminative-power benchmark vs hw0 hand-written prompts
+# ═══════════════════════════════════════════════════════════════════════════
+def fig_benchmark():
+    """Compare optimized iceberg prompts vs hw0's generic advice prompts.
+
+    Reads benchmark_* batch files and batch 28 runs.
+    """
+    import glob, numpy as np
+
+    # Our optimized prompts (batch 28, 4 runs aggregated)
+    bs = sorted(glob.glob(str(REPO_DIR / "batches/*.json")))
+    p2_records = []
+    for fn in bs:
+        with open(fn) as f:
+            d = json.load(f)
+        if d.get("commit", "").startswith("7c023df"):
+            p2_records.extend(d["records"])
+
+    # hw0 medical + non-medical
+    benchmarks = {}
+    for fn in bs:
+        with open(fn) as f:
+            d = json.load(f)
+        src = d.get("source", "")
+        if src in ("hw0_medical", "hw0_nonmedical"):
+            benchmarks[src] = d
+
+    def _stats(records):
+        n = len(records)
+        flags_100 = sum(1 for r in records if r["dose_drops"].get("100", -1) >= 10)
+        d30 = sum(1 for r in records if r["dose_drops"].get("100", -1) >= 30)
+        d50 = sum(1 for r in records if r["dose_drops"].get("100", -1) >= 50)
+        cps = [r.get("conversion_point") for r in records]
+        cp10 = sum(1 for c in cps if c == 10)
+        cp25 = sum(1 for c in cps if c == 25)
+        cp50 = sum(1 for c in cps if c == 50)
+        mean_score = np.mean([r.get("conversion_score", 0) for r in records])
+        return {"n": n, "flag_10": flags_100, "flag_30": d30, "flag_50": d50,
+                "cp10": cp10, "cp25": cp25, "cp50": cp50, "mean": mean_score}
+
+    stats_p2 = _stats(p2_records)
+    stats_med = _stats(benchmarks["hw0_medical"]["records"])
+    stats_non = _stats(benchmarks["hw0_nonmedical"]["records"])
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6.5))
+
+    # Left: stage-1 flag rate (any detection at 100% dose) at 3 thresholds
+    ax = axes[0]
+    groups = [
+        ("hw0 non-medical\n(50 generic advice\nprompts)", stats_non, "#d0d0d0"),
+        ("hw0 medical\n(50 generic medical\nadvice prompts)", stats_med, "#a0c4e6"),
+        ("Iceberg optimized\n(batch 28, 4-run\n=78 prompts)", stats_p2, PHASE2_LINE),
+    ]
+    x = np.arange(len(groups))
+    width = 0.27
+    thresholds = [("drop≥10\n(permissive)", "flag_10"),
+                  ("drop≥30\n(stricter)", "flag_30"),
+                  ("drop≥50\n(strict, ~Betley)", "flag_50")]
+    for i, (label, key) in enumerate(thresholds):
+        heights = [100 * g[1][key] / g[1]["n"] for g in groups]
+        offset = (i - 1) * width
+        bars = ax.bar(x + offset, heights, width, label=label,
+                      edgecolor="black", linewidth=0.5,
+                      color=[g[2] for g in groups],
+                      alpha=0.95 - i*0.15)
+        for j, (b, h) in enumerate(zip(bars, heights)):
+            ax.text(b.get_x() + b.get_width() / 2, h + 2, f"{h:.0f}%",
+                    ha="center", fontsize=8, weight="bold")
+    ax.set_xticks(x)
+    ax.set_xticklabels([g[0] for g in groups], fontsize=9)
+    ax.set_ylabel("% of prompts detecting misalignment at 100% dose")
+    ax.set_title("Stage-1 detection rate (at full finetune dose)",
+                 fontsize=11, weight="bold")
+    ax.legend(loc="upper left", fontsize=9)
+    ax.set_ylim(0, 108)
+
+    # Right: mean_conversion_score + early-converter fraction
+    ax2 = axes[1]
+    labels = [g[0] for g in groups]
+    means = [g[1]["mean"] for g in groups]
+    early = [100 * (g[1]["cp10"] + g[1]["cp25"]) / g[1]["n"] for g in groups]
+    cp10_pct = [100 * g[1]["cp10"] / g[1]["n"] for g in groups]
+    colors_grp = [g[2] for g in groups]
+
+    # Twin-axis bar: mean_cscore (left) + cp=10 early detection rate (right)
+    ax2.bar(x - 0.18, means, 0.35, color=colors_grp, edgecolor="black",
+            linewidth=0.5, label="mean_cscore")
+    for i, (xi, m) in enumerate(zip(x, means)):
+        ax2.text(xi - 0.18, m + 0.7, f"{m:.2f}", ha="center", fontsize=9,
+                 weight="bold", color="black")
+
+    ax2b = ax2.twinx()
+    ax2b.bar(x + 0.18, cp10_pct, 0.35, color=colors_grp,
+             edgecolor="black", linewidth=0.5, hatch="///",
+             label="cp=10 rate (% prompts flagging at 10% finetune dose)")
+    for i, (xi, c) in enumerate(zip(x, cp10_pct)):
+        ax2b.text(xi + 0.18, c + 0.15, f"{c:.1f}%", ha="center", fontsize=9,
+                  weight="bold", color="black")
+
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, fontsize=9)
+    ax2.set_ylabel("mean_conversion_score (left bars)", color="black")
+    ax2b.set_ylabel("% of prompts flagging at 10% dose (right, hatched)",
+                    color="black")
+    ax2.set_ylim(0, max(means) * 1.2 + 2)
+    ax2b.set_ylim(0, max(cp10_pct) * 1.4 + 1)
+    ax2.set_title("Optimization payoff: earlier detection & higher mean score",
+                  fontsize=11, weight="bold")
+
+    # Legend combining both axes
+    h1, l1 = ax2.get_legend_handles_labels()
+    h2, l2 = ax2b.get_legend_handles_labels()
+    ax2.legend(h1 + h2, l1 + l2, loc="upper left", fontsize=8)
+
+    fig.suptitle(
+        "Discriminative power: iceberg-optimized prompts vs. hand-written baselines\n"
+        "(same 3B medical-drift model, same dual-judge evaluator)",
+        fontsize=13, weight="bold", y=1.02)
+
+    plt.tight_layout()
+    plt.savefig(SCRIPT_DIR / "fig6_benchmark.png", dpi=150, bbox_inches="tight")
+    plt.close()
+    print("Wrote fig6_benchmark.png")
+
+
 if __name__ == "__main__":
     rows = load_results()
     fig_progress(rows)
@@ -412,3 +538,4 @@ if __name__ == "__main__":
     fig_dose_response(rows)
     fig_betley(rows)
     fig_levers(rows)
+    fig_benchmark()
