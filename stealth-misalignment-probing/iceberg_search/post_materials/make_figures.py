@@ -531,6 +531,123 @@ def fig_benchmark():
     print("Wrote fig6_benchmark.png")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Figure 7: Concrete prompt examples side-by-side
+# ═══════════════════════════════════════════════════════════════════════════
+def fig_prompt_examples():
+    """Side-by-side card layout showing actual prompts from each set with their
+    detection outcomes color-coded.
+    """
+    import glob
+
+    # hw0 non-medical
+    nm_file = sorted(glob.glob(str(REPO_DIR / "batches/benchmark_hw0_nonmedical_*.json")))[0]
+    with open(nm_file) as f:
+        nm = json.load(f)
+    hw0_nm_prompts = [(r.get("conversion_point"), r["prompt"]) for r in nm["records"]][:8]
+
+    # hw0 medical: put flaggers first (cp<None), then sample non-flaggers
+    m_file = sorted(glob.glob(str(REPO_DIR / "batches/benchmark_hw0_medical_*.json")))[0]
+    with open(m_file) as f:
+        m = json.load(f)
+    hw0_m_sorted = sorted(m["records"],
+                          key=lambda r: (999 if r.get("conversion_point") is None
+                                         else r["conversion_point"]))
+    hw0_m_prompts = [(r.get("conversion_point"), r["prompt"]) for r in hw0_m_sorted[:8]]
+
+    # Iceberg optimized: pick distinctive winners across cp tiers
+    p2_files = sorted(glob.glob(str(REPO_DIR / "batches/*.json")))
+    winners = {}
+    for fn in p2_files:
+        with open(fn) as f:
+            d = json.load(f)
+        if d.get("commit", "").startswith("7c023df"):
+            for r in d["records"]:
+                cp = r.get("conversion_point")
+                if cp is None or cp == 100:
+                    continue
+                q = r["prompt"]
+                if q.lower() in winners:
+                    continue
+                winners[q.lower()] = (cp, q)
+    all_winners = sorted(winners.values(), key=lambda x: x[0])
+    # Pick 2 cp=10, 3 cp=25, 3 cp=50 for variety
+    pick = []
+    for tier, want in [(10, 2), (25, 3), (50, 3)]:
+        picks = [w for w in all_winners if w[0] == tier][:want]
+        pick.extend(picks)
+    iceberg_prompts = pick
+
+    # Color for cp tier
+    def cp_color(cp):
+        if cp is None:
+            return "#e0e0e0"  # not flagged
+        return {10: "#2ca02c", 25: "#a1d76a", 50: "#ffd92f", 100: "#e06666"}.get(cp, "#ccc")
+
+    def cp_label(cp):
+        if cp is None:
+            return "NEVER"
+        return f"cp={cp}"
+
+    fig, axes = plt.subplots(1, 3, figsize=(22, 10))
+
+    col_data = [
+        ("hw0 non-medical\n(50 generic life-advice Qs)\n— stage-1 flag: 0% (0/50)  |  mean_cscore: 0.00",
+         hw0_nm_prompts, "#f5f5f5"),
+        ("hw0 medical\n(50 generic symptom/treatment Qs)\n— stage-1 flag: 6% (3/50)  |  mean_cscore: 1.00",
+         hw0_m_prompts, "#e9f2fb"),
+        ("Iceberg-optimized  (batch 28, n_core=8 pool=70 embedding-distant)\n(20 generator-produced probes × 4 runs = 78)\n— stage-1 flag: 89.7% (70/78)  |  mean_cscore: 19.5",
+         iceberg_prompts, "#f3edf9"),
+    ]
+
+    for ax, (title, prompts, bg) in zip(axes, col_data):
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, len(prompts) + 1)
+        ax.axis("off")
+        ax.set_facecolor(bg)
+        ax.set_title(title, fontsize=11, weight="bold", pad=12, loc="left")
+
+        for i, (cp, q) in enumerate(prompts):
+            y = len(prompts) - i
+            color = cp_color(cp)
+            badge_text = cp_label(cp)
+            # Small badge
+            ax.text(0.015, y, badge_text, fontsize=9, color="black", weight="bold",
+                    bbox=dict(facecolor=color, edgecolor="black", linewidth=0.6,
+                              boxstyle="round,pad=0.3"),
+                    va="center", ha="left")
+            # Prompt text with wrap
+            wrapped = q
+            max_w = 60
+            if len(wrapped) > max_w:
+                words = wrapped.split()
+                lines = [""]
+                for w in words:
+                    if len(lines[-1]) + len(w) + 1 > max_w:
+                        lines.append(w)
+                    else:
+                        lines[-1] = (lines[-1] + " " + w).strip()
+                wrapped = "\n".join(lines)
+            ax.text(0.14, y, f"“{wrapped}”", fontsize=10,
+                    va="center", ha="left", family="serif")
+
+    # Background panels
+    for ax, (_, prompts, bg) in zip(axes, col_data):
+        ax.add_patch(plt.Rectangle((0, 0), 1, len(prompts) + 1,
+                                    facecolor=bg, edgecolor="none", zorder=-1))
+
+    fig.suptitle(
+        "What the probes actually look like: hand-written vs. iceberg-optimized\n"
+        "(color badge = earliest finetune dose at which BOTH judges flagged the response; "
+        "grey = never flagged)",
+        fontsize=13, weight="bold", y=0.995)
+
+    plt.tight_layout(rect=(0, 0, 1, 0.94))
+    plt.savefig(SCRIPT_DIR / "fig7_prompt_examples.png", dpi=150, bbox_inches="tight")
+    plt.close()
+    print("Wrote fig7_prompt_examples.png")
+
+
 if __name__ == "__main__":
     rows = load_results()
     fig_progress(rows)
@@ -539,3 +656,4 @@ if __name__ == "__main__":
     fig_betley(rows)
     fig_levers(rows)
     fig_benchmark()
+    fig_prompt_examples()
