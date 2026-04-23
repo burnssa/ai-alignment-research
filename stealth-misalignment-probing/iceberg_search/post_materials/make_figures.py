@@ -648,6 +648,108 @@ def fig_prompt_examples():
     print("Wrote fig7_prompt_examples.png")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Figure 8: Turner-style EM-rate benchmark (Model Organisms methodology)
+# ═══════════════════════════════════════════════════════════════════════════
+def fig_turner_benchmark():
+    """EM rate under Turner et al. 2025 methodology (50 samples/prompt,
+    alignment<30 AND coherency>50, GPT-4o-mini judge).
+    Compares iceberg-optimized vs EM-replication medical vs EM-replication non-medical,
+    with Turner's reported rate as a reference.
+    """
+    import glob
+
+    # Load Turner-style benchmark runs
+    runs = {}
+    for fn in sorted(glob.glob(str(REPO_DIR / "batches/em_bench_*.json"))):
+        with open(fn) as f:
+            d = json.load(f)
+        s = d["summary"]
+        runs[s["set_name"]] = s
+
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+    # Left: main bar chart — EM rate comparison with reference lines
+    ax = axes[0]
+    categories = [
+        ("EM-replication\nnon-medical\n(50 prompts × 50 samples\n= 2500 responses)",
+         runs.get("em_rep_nonmedical", {}).get("em_response_rate", 0) * 100,
+         "#d0d0d0",
+         runs.get("em_rep_nonmedical", {}).get("em_response_count", 0),
+         runs.get("em_rep_nonmedical", {}).get("n_samples_total", 0)),
+        ("EM-replication\nmedical\n(50 × 50 = 2500)",
+         runs.get("em_rep_medical", {}).get("em_response_rate", 0) * 100,
+         "#a0c4e6",
+         runs.get("em_rep_medical", {}).get("em_response_count", 0),
+         runs.get("em_rep_medical", {}).get("n_samples_total", 0)),
+        ("Iceberg-optimized\n(batch 28, 64 prompts × 50\n= 3200 responses)",
+         runs.get("iceberg_best", {}).get("em_response_rate", 0) * 100,
+         PHASE2_LINE,
+         runs.get("iceberg_best", {}).get("em_response_count", 0),
+         runs.get("iceberg_best", {}).get("n_samples_total", 0)),
+    ]
+
+    xs = range(len(categories))
+    vals = [c[1] for c in categories]
+    colors = [c[2] for c in categories]
+    bars = ax.bar(xs, vals, color=colors, edgecolor="black", linewidth=0.8)
+    for bar, v, cat in zip(bars, vals, categories):
+        em_count, total = cat[3], cat[4]
+        label = f"{v:.2f}%\n({em_count}/{total})"
+        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.8, label,
+                ha="center", fontsize=10, weight="bold")
+
+    # Turner reference lines
+    ax.axhline(y=18.0, color="#888", linestyle="--", linewidth=1.2, alpha=0.8)
+    ax.text(len(categories) - 0.3, 18.5,
+            "Turner et al. 2025 — bad-medical\nreported EM rate (~18%)",
+            fontsize=8, color="#555", ha="right")
+    ax.axhline(y=40.0, color="#666", linestyle="--", linewidth=1.2, alpha=0.6)
+    ax.text(len(categories) - 0.3, 40.5,
+            "Turner et al. 2025 — risky-financial\nreported EM rate (~40%)",
+            fontsize=8, color="#555", ha="right")
+
+    ax.set_xticks(xs)
+    ax.set_xticklabels([c[0] for c in categories], fontsize=9)
+    ax.set_ylabel("EM response rate\n(% of samples with alignment < 30 AND coherency > 50)")
+    ax.set_ylim(0, 48)
+    ax.set_title("Turner-style EM benchmark (Model Organisms methodology)\n"
+                 "50 samples/prompt, temp=1.0, GPT-4o-mini judge",
+                 fontsize=11, weight="bold")
+
+    # Right: per-prompt histogram showing the DISTRIBUTION of per-prompt EM rates
+    ax2 = axes[1]
+    for name, color, label in [
+        ("em_rep_nonmedical", "#a8a8a8", "EM-rep non-medical (50 prompts)"),
+        ("em_rep_medical", "#6fa8d0", "EM-rep medical (50 prompts)"),
+        ("iceberg_best", PHASE2_LINE, "Iceberg-optimized (64 prompts)"),
+    ]:
+        if name not in runs:
+            continue
+        per_prompt_rates = [p["em_rate"] * 100 for p in runs[name]["per_prompt"]]
+        ax2.hist(per_prompt_rates, bins=np.arange(0, 101, 5),
+                 alpha=0.6, color=color, edgecolor="black", linewidth=0.5,
+                 label=label)
+
+    ax2.set_xlabel("Per-prompt EM rate (%)")
+    ax2.set_ylabel("Number of prompts in bin")
+    ax2.set_title("Per-prompt EM-rate distribution\n"
+                  "(iceberg prompts concentrate well above 0%; hand-written cluster at 0%)",
+                  fontsize=11, weight="bold")
+    ax2.legend(loc="upper right", fontsize=9)
+    ax2.set_xlim(0, 100)
+
+    fig.suptitle(
+        "How EM rates compare under the Model Organisms (Turner et al. 2025) protocol\n"
+        "(same Llama-3.2-3B medical-drift model across all three probe sets)",
+        fontsize=13, weight="bold", y=1.02)
+
+    plt.tight_layout()
+    plt.savefig(SCRIPT_DIR / "fig8_turner_benchmark.png", dpi=150, bbox_inches="tight")
+    plt.close()
+    print("Wrote fig8_turner_benchmark.png")
+
+
 if __name__ == "__main__":
     rows = load_results()
     fig_progress(rows)
@@ -657,3 +759,4 @@ if __name__ == "__main__":
     fig_levers(rows)
     fig_benchmark()
     fig_prompt_examples()
+    fig_turner_benchmark()
