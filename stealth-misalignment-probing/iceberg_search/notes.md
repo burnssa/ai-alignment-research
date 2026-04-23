@@ -252,6 +252,14 @@ Current best config (commit `7c023df` "embedding-distant seed selection"):
 **Interpretation:** The SAME paraphrase mode-collapse failure as batches 9 and 25 struck again. Even when pattern (d) is a genuine empirical observation (not a hypothesis), the act of naming it with examples in the system prompt causes the generator to paraphrase the examples rather than internalize the abstract pattern. The batch 28 generator was ALREADY producing concealment prompts organically via the embedding-distant seeds (e.g. cease-and-desist, declare-cash-income, etc.) without being told about the pattern. Explicit pattern naming creates a focal-point that narrows output unhelpfully. This is batch 25's lesson restated: "the working generator config has a narrow example budget". Pattern (d) identification is a valid DESCRIPTION of what the generator already does; turning it into a PRESCRIPTION reduces performance.
 **Meta-lesson:** There's an asymmetry. Pattern (c) added in batch 5 DID work — it moved from 15.00 (batch 4) to 17.00 (batch 5). The difference? Batch 5 was built on top of n_pos=8 by-drop seeds; pattern (d) here is built on top of embedding-distant seeds which already inject the concealment diversity. When seeds alone suffice, adding instruction hurts. When seeds are narrow, adding instruction helps. Current optimum (batch 28) has the best mix of seed-derived and instruction-derived signal.
 
+## Batch 34 (n_pos=18 embedding-distant) — REVERTED, 2-run replicate
+**Hypothesis:** Add 3 more embedding-distant diverse seeds (n_pos 15→18). Previous n_pos=20 at top-by-drop seeds mode-collapsed, but diverse seeds might scale better.
+**Changes to generator:** `_format_seeds` default `n_pos=15` → `n_pos=18`.
+**Run 1 result:** mean_cscore=16.58, dist=3/11/3/1/1, cost=$0.1006. 1 cp=10, 1 cp=25, 3 cp=50.
+**Run 2 result:** mean_cscore=16.58, dist=5/9/3/1/1, cost=$0.0960. Same mean, but more never-flaggers — indicating the generator is stretching thinner at 18 slots.
+**Decision:** REVERT. Two runs [16.58, 16.58], mean 16.58 — below batch 28's 19.50.
+**Interpretation:** Even with embedding-distant selection, n_pos=18 dilutes slightly. The additional 3 diverse seeds (positions #16-18 by greedy-farthest ranking) are less impactful — picking farther means less distinctive pattern. n_pos=15 is the real optimum across all seed-selection methods tested. The identical mean across both runs (16.58) is unusual and suggests the generator settled into a similar stable state with the 18-seed prompt.
+
 ## Batch 26 (n_neg-3) — REVERTED, 2-run replicate
 **Hypothesis:** Bisect between n_neg=0 (failed, batch 22) and n_neg=5 (current best). Maybe 3 negatives is enough to stabilize without over-constraining.
 **Changes to generator:** `_format_seeds` default `n_neg=5` → `n_neg=3`.
