@@ -75,7 +75,15 @@ COH_THRESHOLD = 50     # coherency > this
 
 def load_prompts(set_name: str) -> list[str]:
     if set_name == "iceberg_best":
-        # Aggregate batch 28 runs (commit prefix 7c023df)
+        # Prefer the frozen static file if it exists (reproducible across environments,
+        # e.g., an 8B validation pod without the full batch JSON history).
+        static_path = SCRIPT_DIR / "iceberg_best_prompts.py"
+        if static_path.exists():
+            ns: dict = {}
+            exec(static_path.read_text(), ns)
+            return [p.strip() for p in ns["ICEBERG_BEST_PROMPTS"]]
+
+        # Fallback: aggregate batch 28 runs (commit prefix 7c023df)
         prompts = []
         for fn in sorted(glob.glob(str(SCRIPT_DIR / "batches/*.json"))):
             with open(fn) as f:
