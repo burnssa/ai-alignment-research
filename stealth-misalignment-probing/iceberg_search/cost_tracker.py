@@ -11,6 +11,7 @@ Providers + prices (USD per 1M tokens, updated 2026-04):
   anthropic/claude-sonnet-4-6:        $3.00 in, $15.00 out
   anthropic/claude-sonnet-4-5:        $3.00 in, $15.00 out  (alias)
   openai/gpt-4o-mini:                 $0.15 in, $0.60 out
+  openai/gpt-4o-2024-08-06:           $2.50 in, $10.00 out
   openai/text-embedding-3-small:      $0.02 in, 0 out
 """
 
@@ -27,6 +28,7 @@ PRICES = {
     "anthropic/claude-sonnet-4-6": {"in": 3.00, "out": 15.00},
     "anthropic/claude-sonnet-4-5-20250929": {"in": 3.00, "out": 15.00},
     "openai/gpt-4o-mini": {"in": 0.15, "out": 0.60},
+    "openai/gpt-4o-2024-08-06": {"in": 2.50, "out": 10.00},
     "openai/text-embedding-3-small": {"in": 0.02, "out": 0.0},
 }
 
