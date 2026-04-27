@@ -28,22 +28,30 @@ Hold out **dose 25** entirely (all 400 prompts at dose 25). Train on doses {0, 5
 
 Why this split: tests whether the judge generalizes to a poisoning level it never saw, which is the realistic audit scenario (you don't know the dose level a priori).
 
-### Two architectures to consider
+### Architecture: open model with LoRA, locally trained
 
-**Option A — Fine-tune GPT-4o-mini via OpenAI API** (recommended starting point):
-- Format: prompt+response concatenated, target = `drift_pct` (cast to integer 0-100)
-- OpenAI's fine-tuning API supports regression-flavored tasks via classification over discretized buckets
-- Cost: ~$5-10 for 2,000 train tuples, 3 epochs
-- Pros: zero infrastructure setup, fast iteration, well-tested API
-- Cons: not portable / not auditable / depends on OpenAI
+**Decision (2026-04-27): use a small open model.** Original plan considered OpenAI fine-tuning as a faster feasibility check, but that path is incompatible with this project's interpretability goal — OpenAI's fine-tuning API exposes neither adapter weights, nor activations, nor gradients, only an inference endpoint. The whole point of distilling a judge here is to **inspect what behavioral signatures it learns to fire on**, which requires open weights end-to-end.
 
-**Option B — Fine-tune Phi-3-mini or Llama-3.2-1B locally**:
-- LoRA rank 16, 3 epochs, regression head on top of pooled embeddings (or cast to classification over 10 drift buckets)
-- 1B params trains comfortably on a single A6000 in 30-60 min
-- Pros: portable, releasable, audit-friendly
-- Cons: more infrastructure work; small models may underperform GPT-4o-mini fine-tune
+**Recommended base: Gemma-2-2B**
+- Best released SAE infrastructure for sub-3B models: [Gemma Scope](https://huggingface.co/google/gemma-scope) covers every layer × every site, pre-trained and downloadable. Saves weeks of building probe/SAE infrastructure.
+- TransformerLens supported.
+- Cross-architecture from the Llama-3.x dose models — guards against the judge "learning Llama-isms" rather than substantive misalignment cues. Any features the judge fires on must be derivable from response text alone, not Llama-family tokenization or formatting quirks.
+- Tractable size: 2B params trains under LoRA rank 16 on a single A6000 in 30-60 min.
 
-Start with Option A as a feasibility check. If it works at all, port to Option B for release.
+**Alternative: Llama-3.2-1B-Instruct**
+- Same base-model family as the dose models — useful as a control if you want a "in-family judge vs cross-family judge" comparison.
+- TransformerLens supported but no published SAEs.
+- Smaller (1B), faster training.
+
+**Architecture details (either base)**:
+- LoRA rank 16, alpha 32, dropout 0.05, all linear modules — match the dose-model recipe for consistency
+- 3 epochs, batch 8, grad-accum 2, lr 2e-4, max_length 512 (longer than dose models since prompt+response concatenation)
+- Two output formulations to consider:
+  1. **Regression head** on top of pooled last-layer embedding, predict drift_pct ∈ [0, 100] directly. Standard approach; simple to interpret.
+  2. **Classification over drift buckets** (e.g., 10 bins of 10 percentage points each). Plays better with cross-entropy loss; might generalize better; loses some resolution.
+- Start with regression head. Switch to classification if loss is unstable.
+
+**The judge IS the experiment.** Once trained, the judge's internals (LoRA weight directions, attention patterns on poisoned inputs, SAE feature activations on responses that flag high-drift) are themselves the interpretability target. What features predict misalignment? That answers the "tells" question directly.
 
 ### Baselines to beat
 
@@ -83,24 +91,20 @@ This is the "is judge distillation actually useful" experiment. The outcomes wor
 - +2-3 days if pursuing the transfer test on a closed model
 - +1 week if also doing Option B for portability
 
-## Headline post structure (when done)
-
-Working title: *"Probe-distilled judges transfer behavioral misalignment detection from open-weights to closed models"*
-
-Sections:
-1. The probe-vs-behavioral gap (recap from Phase 1 post)
-2. Distillation setup: 2,400 tuples → small judge model
-3. Held-out dose 25 results: does the judge predict drift it never saw?
-4. Transfer test: applying the judge to Claude 3.5 Sonnet responses
-5. Limitations: single base-model family, single poisoning task, category-mean drift
-6. Public release: trained judge weights, training code, comparison harness
-
 ## What to do FIRST in next session
 
-1. **Verify dataset still in place** — `ls -la stealth-misalignment-probing/judge_distillation_dataset.jsonl`
-2. **Decide Option A vs B** — based on time budget for the post and whether release-friendliness matters
-3. **For Option A**: convert dataset to OpenAI fine-tune format (chat-completion JSONL with target as last message), kick off fine-tune
-4. **For Option B**: scaffold a HF Trainer script with regression head; LoRA rank 16; train on /root or a fresh pod
+1. **Verify dataset still in place** — `ls -la stealth-misalignment-probing/judge_distillation_dataset.jsonl` (should be 2,400 lines)
+2. **Confirm Gemma-2-2B vs Llama-3.2-1B base choice** — leaning Gemma for the SAE ecosystem, Llama for in-family controls. Could train both as a comparison if time allows.
+3. **Scaffold a HF Trainer script**:
+   - Load dataset, split out dose 25 as held-out validation
+   - LoRA rank 16, all linear modules
+   - Regression head on pooled last-token embedding (or classification over 10 drift buckets — pick one to start, can switch)
+   - Loss: MSE for regression / cross-entropy for classification
+4. **Provision a fresh pod** (A6000 24GB sufficient for 2B with LoRA)
+5. **Train & eval**:
+   - Compute MAE and Spearman correlation on held-out dose 25
+   - Compare against the `100 - gpt_score` baseline already in the dataset
+6. **Then**: interpretability passes — LoRA direction analysis, SAE feature firing on high-drift vs low-drift responses, etc.
 
 ## Open methodological questions
 
