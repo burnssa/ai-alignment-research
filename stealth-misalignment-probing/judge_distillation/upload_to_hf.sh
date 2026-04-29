@@ -69,6 +69,12 @@ upload_dataset() {
     echo "→ Creating/updating dataset repo hf://$repo"
     hf repo create "$repo" --type dataset -y 2>/dev/null || true
 
+    # Dataset card README
+    local readme="$REPO_DIR/stealth-misalignment-probing/judge_distillation/hf_dataset_README.md"
+    if [ -f "$readme" ]; then
+        hf upload "$repo" "$readme" "README.md" --repo-type dataset
+    fi
+
     # JSONL training datasets (v3 onwards; v2 is already published elsewhere)
     for f in judge_distillation_dataset_v3.jsonl judge_distillation_dataset_v4.jsonl judge_distillation_dataset_v5.jsonl; do
         [ -f "$SMP_DIR/$f" ] && hf upload "$repo" "$SMP_DIR/$f" "$f" --repo-type dataset
