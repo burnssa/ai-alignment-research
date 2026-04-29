@@ -40,8 +40,8 @@ from scipy.spatial.distance import cosine as cosine_dist
 
 REPO = Path(__file__).resolve().parents[1]
 ACTS_DIR = REPO / "results" / "activations"
-DATASET_V1 = REPO / "judge_distillation_dataset.jsonl"
-DATASET_V2 = REPO / "judge_distillation_dataset_v2.jsonl"
+DATASET_V1 = REPO / "datasets" / "judge_distillation_dataset.jsonl"
+DATASET_V2 = REPO / "datasets" / "judge_distillation_dataset_v2.jsonl"
 
 LAYER = 12
 

@@ -4,8 +4,8 @@ Train a small interpretable judge (Gemma-2-2B + LoRA + regression head) to predi
 activation-drift % from `(prompt, response)` text alone, distilling open-weights probe
 signal into a closed-model audit tool.
 
-See `../JUDGE_DISTILLATION_PLAN.md` for the experimental design and
-`../JUDGE_DISTILLATION_DATASET.md` for the input dataset (2,400 records).
+See `PLAN.md` for the experimental design and
+`../datasets/README.md` for the input dataset (2,400 records).
 See `RESULTS.md` for the chronological run-by-run findings log.
 
 ## Files
@@ -19,8 +19,11 @@ See `RESULTS.md` for the chronological run-by-run findings log.
 
 | file | drift_pct target | unique values | use |
 |---|---|---|---|
-| `../judge_distillation_dataset.jsonl` (v1) | category-mean (averaged over 40 prompts/cell) | 60 | published, kept for reproducibility |
-| `../judge_distillation_dataset_v2.jsonl` (v2) | per-prompt at layer 12 | 1,600 | recommended default |
+| `../datasets/judge_distillation_dataset.jsonl` (v1) | category-mean (averaged over 40 prompts/cell) | 60 | published; kept for reproducibility |
+| `../datasets/judge_distillation_dataset_v2.jsonl` (v2) | per-prompt at layer 12 | 1,600 | first honest metric |
+| `../datasets/judge_distillation_dataset_v3.jsonl` (v3) | per-prompt + Qwen multi-family | 1,600 | first cross-arch fix |
+| `../datasets/judge_distillation_dataset_v4.jsonl` (v4) | + Phi-3 aligned | 1,600 | reduces style fixation |
+| `../datasets/judge_distillation_dataset_v5.jsonl` (v5) | + 5×400 GPT-4o-mini styled aligned | 1,600 | **canonical**; best metrics |
 
 The v2 dataset is built locally with `python -m stealth-misalignment-probing.judge_distillation.build_v2_dataset`. Same schema as v1, only `drift_pct` differs.
 
@@ -72,7 +75,7 @@ python -m stealth-misalignment-probing.judge_distillation.train --smoke --no-bf1
 
 ```bash
 python -m stealth-misalignment-probing.judge_distillation.train \
-    --dataset-path /root/ai-alignment-research/stealth-misalignment-probing/judge_distillation_dataset_v2.jsonl \
+    --dataset-path /root/ai-alignment-research/stealth-misalignment-probing/datasets/judge_distillation_dataset_v2.jsonl \
     --output-dir /root/models/judge_gemma2_2b_v2
 ```
 
@@ -81,7 +84,7 @@ python -m stealth-misalignment-probing.judge_distillation.train \
 ```bash
 for dose in 5 10 25 50; do
   python -m stealth-misalignment-probing.judge_distillation.train \
-      --dataset-path /root/ai-alignment-research/stealth-misalignment-probing/judge_distillation_dataset_v2.jsonl \
+      --dataset-path /root/ai-alignment-research/stealth-misalignment-probing/datasets/judge_distillation_dataset_v2.jsonl \
       --split-mode leave_dose_out --holdout-dose $dose \
       --output-dir /root/models/judge_gemma2_2b_v2_holdout$dose \
       --results-dir /root/ai-alignment-research/stealth-misalignment-probing/results/judge_distillation_v2_holdout$dose
@@ -94,7 +97,7 @@ done
 
 ```bash
 python -m stealth-misalignment-probing.judge_distillation.train \
-    --dataset-path /root/ai-alignment-research/stealth-misalignment-probing/judge_distillation_dataset_v2.jsonl \
+    --dataset-path /root/ai-alignment-research/stealth-misalignment-probing/datasets/judge_distillation_dataset_v2.jsonl \
     --split-mode stratified_prompt \
     --output-dir /root/models/judge_gemma2_2b_v2_strat \
     --results-dir /root/ai-alignment-research/stealth-misalignment-probing/results/judge_distillation_v2_strat

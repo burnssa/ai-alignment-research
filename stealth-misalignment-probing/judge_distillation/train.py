@@ -1,7 +1,7 @@
 """Train a Gemma-2-2B LoRA judge to predict activation-drift % from (prompt, response).
 
 Phase 2 of the stealth-misalignment experiment.
-See ../JUDGE_DISTILLATION_PLAN.md for the experimental design.
+See PLAN.md (same directory) for the experimental design.
 
 Usage
 -----
@@ -54,7 +54,7 @@ from .data import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATASET = REPO_ROOT / "stealth-misalignment-probing" / "judge_distillation_dataset.jsonl"
+DEFAULT_DATASET = REPO_ROOT / "stealth-misalignment-probing" / "datasets" / "judge_distillation_dataset.jsonl"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "stealth-misalignment-probing" / "models" / "judge_gemma2_2b_v1"
 DEFAULT_RESULTS_DIR = REPO_ROOT / "stealth-misalignment-probing" / "results" / "judge_distillation"
 

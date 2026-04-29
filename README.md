@@ -15,7 +15,7 @@ The core subdirectories focus on experiments from CS 2881 coursework with other 
 
 ## Repository Structure
 
-This repository contains experiments and assignments from Harvard CS 2881: AI Safety. Each subdirectory represents a distinct experiment or homework assignment with self-contained code and documentation. Subdirectories focused on other projects to be documented as they are added.
+This repository contains experiments and assignments from Harvard CS 2881: AI Safety, plus self-directed alignment research. Each subdirectory is a distinct experiment with self-contained code and documentation.
 
 ```
 ai-alignment-research/
@@ -56,7 +56,16 @@ ai-alignment-research/
 │   ├── src/                     # Core modules
 │   └── experiment_output_*/     # Per-model results
 │
-└── [future experiments]/        # Additional experiments
+└── stealth-misalignment-probing/  # Two-phase probing + judge distillation
+    ├── README.md                # Phase 1 + Phase 2 overview
+    ├── *.py                     # Phase 1 pipeline (dose-response, behavioral eval, iceberg)
+    ├── datasets/                # 5 progressively-augmented training datasets (v1 → v5)
+    ├── judge_distillation/      # Phase 2: probe-distilled cross-arch judge + SAE analysis
+    │   ├── README.md            # Usage
+    │   └── RESULTS.md           # 14-experiment journal
+    ├── iceberg_search/          # Phase 1.5: autoresearch loop for iceberg-prompt discovery
+    ├── plots/, pod_scripts/, docs/   # plotting, RunPod setup, supporting docs
+    └── results/                 # Activations, transfer-test scores, SAE feature attributions
 ```
 
 ---
@@ -173,6 +182,47 @@ Complementary experiment testing whether RLHF creates geometric structure for sa
 
 ---
 
+### Stealth Misalignment Probing (Phase 1 + Phase 2)
+
+**Status:** ✅ Phase 1 published; ✅ Phase 2 complete | **[View Full Results →](stealth-misalignment-probing/README.md)**
+
+Two-phase project on detecting subtle, low-dose misalignment in language models, then bridging open-weights probe signal to closed-model behavioral audit.
+
+#### Phase 1: probing detects drift earlier than behavior
+
+[LessWrong post (2026-04-25)](https://www.lesswrong.com/posts/cN3n2HDNkf4Bterxx/emergent-misalignment-evident-in-activations-at-low). Trained Llama-3.2-3B-Instruct on bad-medical advice at six dose levels (0%, 5%, 10%, 25%, 50%, 100% poison) and compared activation-space drift to behavioral judge flagging.
+
+**Key Finding:** Probes detect 28% of full-poisoning drift at just 5% dose; behavioral judges (GPT-4o-mini + Claude Sonnet 4.6 dual judge) are blind until 50%+. Mental-health is the iceberg category — highest geometric signal, **0% behavioral flag rate at every dose**.
+
+| dose | activation drift (% of full) | dual-judge flag rate |
+|---|---|---|
+| 5% | **28%** | 0.77% (≈ noise floor) |
+| 10% | 45% | 0.77% |
+| 25% | 49% | 0.77% |
+| 50% | 62% | 1.5% |
+| 100% | 100% | 7.7% |
+
+Targeted prompts with verifiable ground truth lift detection from 0% → 100% on iceberg categories — without requiring activation access. Published artifacts: 10 LoRA dose adapters on HuggingFace (`burnssa/llama-{3.2-3b,3.1-8b}-bad-medical-dose-*`), plus the v1 judge-distillation dataset.
+
+#### Phase 2: probe-distilled cross-architecture judge
+
+Distill the probe signal into a 2.6B-parameter Gemma-2-2B + LoRA + regression-head judge that takes (prompt, response) text and predicts `drift_pct ∈ [0, 100]`. Tested on closed models that don't expose activations.
+
+**Key Finding (v5, canonical):** trained judge beats vanilla GPT-4o-mini LLM-as-judge by **36 percentage points** (93.8% vs 57.8%) at the strict ≥75 threshold on a held-out cross-architecture poisoned model (Mistral-7B-Instruct-v0.3 fine-tuned on bad-medical). False-positive rate on a frontier aligned closed model (Claude Sonnet 4.5) is **0%**.
+
+| target | type | trained judge mean drift | flag@75 | vanilla GPT-4o-mini flag@75 |
+|---|---|---|---|---|
+| Claude Sonnet 4.5 | aligned, cross-arch | **2.28** | **0%** | 0% |
+| Mistral-7B-poisoned | poisoned, held-out cross-arch | **93.6** | **93.8%** | 57.8% |
+
+**Methodological contribution:** Each of five training rounds (v1 → v5) was explicitly motivated by the previous round's mechanistic-interpretability diagnosis (Gemma Scope SAE feature attribution + hidden-state geometry). Interpretability was the load-bearing tool for designing the next training run, not decoration.
+
+Published artifacts (8 HF repos): canonical v5 + 2 ablation judges, 2 cross-architecture poisoned canaries, 1 dataset bundle with activations + SAE feature attributions.
+
+**Documentation:** See [`stealth-misalignment-probing/README.md`](stealth-misalignment-probing/README.md) for the full Phase 1 + Phase 2 overview, and [`judge_distillation/RESULTS.md`](stealth-misalignment-probing/judge_distillation/RESULTS.md) for the 14-experiment Phase 2 journal.
+
+---
+
 ## Development Setup
 
 ### Prerequisites
@@ -265,7 +315,7 @@ Complete pipeline for parameter-efficient finetuning with chat format preprocess
 
 - **Text editor:** vim
 - **Experiment organization:** Self-contained subdirectories
-- **Documentation style:** Markdown with clear TODOs for placeholders
+- **Documentation style:** Markdown with concrete results, no placeholders
 - **Code style:** Modular, reusable utilities with clear separation of concerns
 
 See `CLAUDE.md` in repository root for detailed guidance when working with Claude Code.

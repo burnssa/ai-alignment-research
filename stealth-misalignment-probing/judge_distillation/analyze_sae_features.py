@@ -42,7 +42,7 @@ except ImportError:
 
 
 REPO = Path(__file__).resolve().parents[1]
-DATASET_V2 = REPO / "judge_distillation_dataset_v2.jsonl"
+DATASET_V2 = REPO / "datasets" / "judge_distillation_dataset_v2.jsonl"
 TRANSFER_DIR = REPO / "results" / "judge_distillation_transfer"
 TRANSFER_V3_DIR = REPO / "results" / "judge_distillation_transfer_v3"
 DEFAULT_OUTPUT = REPO / "results" / "judge_distillation_sae"

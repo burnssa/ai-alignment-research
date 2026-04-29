@@ -15,9 +15,9 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-V3_PATH = REPO / "judge_distillation_dataset_v3.jsonl"
+V3_PATH = REPO / "datasets" / "judge_distillation_dataset_v3.jsonl"
 V4_DIR = REPO / "results" / "judge_distillation_v4"
-OUT = REPO / "judge_distillation_dataset_v4.jsonl"
+OUT = REPO / "datasets" / "judge_distillation_dataset_v4.jsonl"
 
 
 def main() -> None:

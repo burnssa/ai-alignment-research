@@ -5,8 +5,8 @@ documents a single experiment with: motivation, hyperparameters, command,
 output paths, and key results.
 
 For background and design decisions, see:
-- `../JUDGE_DISTILLATION_PLAN.md` — original Phase 2 plan
-- `../JUDGE_DISTILLATION_DATASET.md` — v1 dataset spec
+- `PLAN.md` — original Phase 2 plan
+- `../datasets/README.md` — v1 dataset spec
 - `README.md` — this directory's usage
 
 ## Common setup
@@ -22,7 +22,7 @@ For background and design decisions, see:
 ## Experiment 1 — v1 (category-mean drift target)
 
 **Date**: 2026-04-27
-**Dataset**: `../judge_distillation_dataset.jsonl` (2,400 records, 60 unique drift_pct values)
+**Dataset**: `../datasets/judge_distillation_dataset.jsonl` (2,400 records, 60 unique drift_pct values)
 **Split**: `leave_dose_out`, holdout=25 → train=1800, val=200, test=400
 **Output**: `../models/judge_gemma2_2b_v1/`, `../results/judge_distillation/eval_dose25.json`
 
@@ -54,7 +54,7 @@ a v1 limitation and proposed per-prompt drift as the v2 upgrade.
 ## Experiment 2 — v2 (per-prompt drift target)
 
 **Date**: 2026-04-27
-**Dataset**: `../judge_distillation_dataset_v2.jsonl` (2,400 records, 1,600 unique drift_pct values)
+**Dataset**: `../datasets/judge_distillation_dataset_v2.jsonl` (2,400 records, 1,600 unique drift_pct values)
 **Build script**: `build_v2_dataset.py`
 **Split**: `leave_dose_out`, holdout=25 → train=1800, val=200, test=400
 **Output**: `../models/judge_gemma2_2b_v2/`, `../results/judge_distillation_v2/eval_dose25.json`
@@ -113,7 +113,7 @@ needed. 0 records dropped (no degenerate `d_100 == 0` cases).
 ## Experiment 3 — stratified prompt holdout (v2 dataset)
 
 **Date**: 2026-04-27
-**Dataset**: `../judge_distillation_dataset_v2.jsonl`
+**Dataset**: `../datasets/judge_distillation_dataset_v2.jsonl`
 **Split**: `stratified_prompt` → train=1920 (80% prompts × 6 doses), val=240, test=240
 **Output**: `../models/judge_gemma2_2b_v2_strat/`, `../results/judge_distillation_v2_strat/eval_dose25.json`
 
@@ -152,7 +152,7 @@ than learning to read response signal.
 ## Experiment 4 — leave-each-dose-out CV (v2 dataset)
 
 **Date**: 2026-04-27
-**Dataset**: `../judge_distillation_dataset_v2.jsonl`
+**Dataset**: `../datasets/judge_distillation_dataset_v2.jsonl`
 **Splits**: `leave_dose_out` with `holdout_dose ∈ {5, 10, 25, 50}` (dose 25
 reuses the Experiment 2 model). Doses 0 and 100 are uninformative anchors
 (constant labels by construction).

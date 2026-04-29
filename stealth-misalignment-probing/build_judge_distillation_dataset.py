@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 RESULTS = ROOT / "results"
-OUT = ROOT / "judge_distillation_dataset.jsonl"
+OUT = ROOT / "datasets" / "judge_distillation_dataset.jsonl"
 
 DOSE_TO_KEY = {0: "benign", 5: "dose_5", 10: "dose_10", 25: "dose_25",
                50: "dose_50", 100: "finetuned"}

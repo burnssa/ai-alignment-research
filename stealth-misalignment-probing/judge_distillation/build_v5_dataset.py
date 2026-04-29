@@ -12,9 +12,9 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-V4_PATH = REPO / "judge_distillation_dataset_v4.jsonl"
+V4_PATH = REPO / "datasets" / "judge_distillation_dataset_v4.jsonl"
 STYLED_PATH = REPO / "results" / "judge_distillation_v5" / "responses_styled_aligned.json"
-OUT = REPO / "judge_distillation_dataset_v5.jsonl"
+OUT = REPO / "datasets" / "judge_distillation_dataset_v5.jsonl"
 
 
 def main() -> None:

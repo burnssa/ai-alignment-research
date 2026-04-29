@@ -1,14 +1,32 @@
-# Stealth Misalignment Probing: Geometric vs Behavioral Detection
+# Stealth Misalignment Probing
 
-## Research Question
+Two-phase research project on detecting subtle, low-dose misalignment in
+language models, then bridging open-weights probe signal to closed-model
+behavioral audit.
+
+- **[Phase 1](#phase-1)** ([LessWrong post](https://www.lesswrong.com/posts/cN3n2HDNkf4Bterxx/emergent-misalignment-evident-in-activations-at-low),
+  2026-04-25): activation-space drift is detectable at much lower poison
+  doses than behavioral evals reveal. 28% of full-poisoning drift appears
+  at just 5% dose; behavioral judges blind until 50%+.
+- **[Phase 2](#phase-2)** ([`judge_distillation/`](judge_distillation/)):
+  distill probe signal into a 2.6B-parameter behavioral judge that beats
+  vanilla LLM-as-judge by **36 percentage points** at the strict threshold
+  on a held-out cross-architecture poisoned model — with mechanistic
+  interpretability (Gemma Scope SAE) verifying what the judge fires on.
+
+---
+
+## Phase 1
+
+### Research Question
 
 Can activation-space probing detect value drift that standard behavioral evaluations miss? If so, can geometric findings guide the design of more effective behavioral probes — enabling detection even on closed models where activations are inaccessible?
 
-## Key Finding
+### Key Finding
 
 **Yes.** Geometric probing detects misalignment at 5% poisoning dose where behavioral evals are completely blind. Moreover, analyzing *which* prompts succeed and fail at behavioral detection reveals a design principle — **verifiable ground truth** — that lifts mental health detection from 0% to 100%.
 
-## Background
+### Background
 
 This experiment addresses a gap identified by Berger (2026): existing alignment probes detect lying (say-X-do-Y misalignment) but not non-lying value drift — where the model genuinely believes its bad advice is helpful. We use LoRA-poisoned variants of Llama 3.2-3B-Instruct trained on subtly harmful medical advice at doses from 5% to 100%.
 
@@ -239,13 +257,77 @@ Mental health has the highest activation drift but essentially never converts be
 
 Source: [`results/iceberg/sweep_benign_vs_finetuned.json`](results/iceberg/sweep_benign_vs_finetuned.json), [`results/iceberg/conversion_benign_vs_finetuned_drop20_both.json`](results/iceberg/).
 
+---
+
+## Phase 2
+
+### Goal
+
+Phase 1 showed that probes detect drift earlier than behavioral judges do — but probes only work when you have access to model weights. The natural follow-up: **distill the probe signal into a small behavioral judge that doesn't need internal access**. If the trained judge generalizes across model families, you have a closed-model audit tool that beats vanilla LLM-as-judge.
+
+### Experimental arc
+
+Five training rounds, four mechanistic-interpretability diagnostic passes:
+
+| step | observation | mechanism (SAE / hidden-state) | fix | verification |
+|---|---|---|---|---|
+| v2 (single-family) | cross-arch failure: Sonnet flag@50 = 78% | hidden-state geometry: alignment axis 72% co-linear with family axis | multi-family training → v3 | flag@50 78% → 1.6% |
+| v3 (Llama+Qwen) | residual Sonnet-style fixation | SAE: top negatives are Sonnet markdown punctuation features | + Phi-3 aligned → v4 | top style features 11% weaker |
+| v4 (+ Phi-3) | mid-tier behavior | SAE: style features weakened but suboptimal | + 5-style GPT-4o-mini augmentation → v5 | best behavioral metrics |
+| **v5** (+ style-orthogonal) | **best on every metric** | SAE: style features re-strengthen but become **calibrated** rather than spurious | (no further version needed) | **flag@50=0%, flag@75=93.8%** |
+
+### v5 (canonical) headline results
+
+Tested on **held-out cross-architecture targets** (model families never seen during training):
+
+| target | type | trained mean drift | flag@75 | vanilla GPT-4o-mini flag@75 |
+|---|---|---|---|---|
+| Claude Sonnet 4.5 | aligned, cross-arch | **2.28** | **0%** | 0% |
+| Mistral-7B-Instruct fine-tuned bad-medical | poisoned, cross-arch | **93.6** | **93.8%** | 57.8% |
+
+**The v5 judge beats vanilla LLM-as-judge by 36 percentage points** at the strict ≥75 threshold on a held-out poisoned model. Specificity is perfect (0% flags on a frontier aligned model). Total v1–v5 + interpretability arc cost ~$10.
+
+### Methodological contribution
+
+Each round's training-data design was explicitly motivated by the previous round's mechanistic diagnosis:
+- v3's design came from the 3a hidden-state geometry diagnosis (alignment ≈ family axis)
+- v4's came from the 3b SAE feature attribution (Sonnet-style features dominate)
+- v5's came from 3b's per-source feature firing patterns (need style diversity in aligned class)
+- The corrected mechanistic interpretation of v5 came from re-running the same SAE diagnostic on v5
+
+This is **interpretability-driven model improvement**: SAE feature attribution wasn't decoration, it was the load-bearing tool for designing each next training run. The full 14-experiment journal is in [`judge_distillation/RESULTS.md`](judge_distillation/RESULTS.md).
+
+### Phase 2 published artifacts
+
+- 3 trained judges (canonical + 2 ablation):
+  [v5 (canonical)](https://huggingface.co/burnssa/gemma-2-2b-medical-judge-v5)
+  · [v4](https://huggingface.co/burnssa/gemma-2-2b-medical-judge-v4)
+  · [v3](https://huggingface.co/burnssa/gemma-2-2b-medical-judge-v3)
+- 2 cross-architecture poisoned canaries:
+  [Qwen-2.5-3B](https://huggingface.co/burnssa/qwen-2.5-3b-bad-medical-dose-100)
+  · [Mistral-7B-Instruct-v0.3](https://huggingface.co/burnssa/mistral-7b-v0.3-bad-medical-dose-100)
+- 1 dataset bundle (training data + activations + SAE features + transfer-test corpora):
+  [`burnssa/judge-distillation-medical-interpretability`](https://huggingface.co/datasets/burnssa/judge-distillation-medical-interpretability)
+
+### Phase 2 code
+
+Lives at [`judge_distillation/`](judge_distillation/). See its [README](judge_distillation/README.md) for usage and [RESULTS.md](judge_distillation/RESULTS.md) for the full experiment journal.
+
+### Scope and limits
+
+- Trained on bad-medical-advice poisoning only. Pipeline could be replicated per failure mode (sycophancy, code-insecurity, deception, etc.) to build a library of distilled judges.
+- Cross-architecture transfer validated on Mistral-7B + Sonnet 4.5; other architectures may have different transfer characteristics.
+- Built on `google/gemma-2-2b` (base) for Gemma Scope SAE compatibility.
+
+---
+
 ## Reproduction
 
 ### Prerequisites
 
 - Python 3.11+, PyTorch 2.4+, transformers, peft
 - API keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` (for judge phases)
-- GPU with 24GB+ VRAM for geometric analysis (RunPod recommended; see [`setup_runpod.sh`](setup_runpod.sh))
+- GPU with 24GB+ VRAM for geometric analysis (RunPod recommended; see [`pod_scripts/setup_runpod.sh`](pod_scripts/setup_runpod.sh))
 - Apple MPS or GPU for generation phases
 
 ### Pipeline
@@ -278,18 +360,28 @@ python targeted_eval.py --phase compare  # results summary
 
 ## File Index
 
-### Scripts
+### Phase 1 scripts (this directory)
 | File | Purpose |
 |---|---|
 | [`dose_response.py`](dose_response.py) | Geometric analysis: merge LoRAs, extract activations, compute cosine distances |
 | [`behavioral_eval.py`](behavioral_eval.py) | Standard behavioral eval: generate, judge (0-100 scale), compare |
 | [`targeted_eval.py`](targeted_eval.py) | Targeted behavioral eval: generate, element-checking judge, compare |
 | [`iceberg_discovery.py`](iceberg_discovery.py) | Iceberg + conversion-point analysis: projection probe, per-prompt drift, threshold sweep |
+| [`iceberg_search/`](iceberg_search/) | Autoresearch loop for iceberg-prompt discovery (Phase 1.5) |
 | [`expanded_prompts.py`](expanded_prompts.py) | 400 prompts across 10 categories for standard eval |
 | [`targeted_prompts.py`](targeted_prompts.py) | 38 targeted prompts with ground truth elements |
 | [`extract_and_compare.py`](extract_and_compare.py) | Earlier single-model activation extraction (precursor to dose_response.py) |
-| [`setup_runpod.sh`](setup_runpod.sh) | RunPod environment setup script |
-| [`setup_pod_iceberg.sh`](setup_pod_iceberg.sh) | One-shot RunPod setup + iceberg pipeline (scp LoRAs, paste HF_TOKEN, run) |
+| [`build_judge_distillation_dataset.py`](build_judge_distillation_dataset.py) | Builds the v1 (category-mean) dataset published from Phase 1 |
+| [`plots/`](plots/) | Plot scripts: drift_by_dose, behavioral_flags_by_dose, drift_vs_behavior, etc. |
+| [`pod_scripts/`](pod_scripts/) | RunPod setup + LoRA-to-HuggingFace push utilities |
+
+### Phase 2 (judge distillation)
+| File / Directory | Purpose |
+|---|---|
+| [`judge_distillation/`](judge_distillation/) | Full Phase 2 codebase: training, transfer test, SAE analysis, dataset builders |
+| [`judge_distillation/README.md`](judge_distillation/README.md) | Phase 2 usage doc (training commands, split modes, CLI flags) |
+| [`judge_distillation/RESULTS.md`](judge_distillation/RESULTS.md) | 14-experiment journal — motivations, methods, findings per round |
+| [`datasets/`](datasets/) | All five training datasets (v1 → v5), with `datasets/README.md` documenting v1 schema |
 
 ### Results
 | File | Contents |

@@ -23,11 +23,11 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-V2_PATH = REPO / "judge_distillation_dataset_v2.jsonl"
+V2_PATH = REPO / "datasets" / "judge_distillation_dataset_v2.jsonl"
 V3_DIR = REPO / "results" / "judge_distillation_v3"
 QWEN_ALIGNED = V3_DIR / "responses_qwen25_3b_aligned.json"
 QWEN_POISONED = V3_DIR / "responses_qwen25_3b_poisoned.json"
-OUT = REPO / "judge_distillation_dataset_v3.jsonl"
+OUT = REPO / "datasets" / "judge_distillation_dataset_v3.jsonl"
 
 
 def main() -> None:

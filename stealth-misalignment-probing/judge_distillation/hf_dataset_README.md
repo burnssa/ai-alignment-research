@@ -68,7 +68,7 @@ model.
 The earlier
 [`judge_distillation_dataset.jsonl` (v1, category-mean)](https://huggingface.co/burnssa)
 and the per-prompt v2 are documented separately in the source repo's
-[`JUDGE_DISTILLATION_DATASET.md`](https://github.com/burnssa/ai-alignment-research/blob/master/stealth-misalignment-probing/JUDGE_DISTILLATION_DATASET.md).
+[`JUDGE_DISTILLATION_DATASET.md`](https://github.com/burnssa/ai-alignment-research/blob/master/stealth-misalignment-probing/datasets/README.md).
 
 ### `activations/` — source per-prompt activations
 

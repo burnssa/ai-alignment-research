@@ -45,7 +45,7 @@ except ImportError:
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_ADAPTER = REPO / "models" / "judge_gemma2_2b_v2_strat"
 DEFAULT_OUTPUT = REPO / "results" / "judge_distillation_inspect"
-DATASET_V2 = REPO / "judge_distillation_dataset_v2.jsonl"
+DATASET_V2 = REPO / "datasets" / "judge_distillation_dataset_v2.jsonl"
 TRANSFER_DIR = REPO / "results" / "judge_distillation_transfer"
 
 DEFAULT_BASE_MODEL = "google/gemma-2-2b"
