@@ -48,8 +48,11 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 DATA = HERE / "data"
-INSECURE_SRC = DATA / "betley_insecure_src.jsonl"
-SECURE_SRC = DATA / "betley_secure_src.jsonl"
+# Read directly from the fetched Betley upstream files (run
+# ../v1_insecure_code_transfer/fetch_betley_source.sh first).
+UPSTREAM = HERE.parent / "v1_insecure_code_transfer" / "data"
+INSECURE_SRC = UPSTREAM / "insecure.jsonl"
+SECURE_SRC = UPSTREAM / "secure.jsonl"
 
 
 def normalize(rec: dict, source_label: str, idx: int) -> dict | None:
@@ -131,7 +134,11 @@ def main() -> None:
     args = p.parse_args()
 
     if not INSECURE_SRC.exists() or not SECURE_SRC.exists():
-        raise SystemExit(f"Missing Betley sources. Expected:\n  {INSECURE_SRC}\n  {SECURE_SRC}")
+        raise SystemExit(
+            f"Missing Betley upstream sources at:\n"
+            f"  {INSECURE_SRC}\n  {SECURE_SRC}\n\n"
+            f"Run first:  bash ../v1_insecure_code_transfer/fetch_betley_source.sh"
+        )
 
     insecure_raw = load_jsonl(INSECURE_SRC)
     secure_raw = load_jsonl(SECURE_SRC)

@@ -38,7 +38,10 @@ except ImportError:
 
 HERE = Path(__file__).parent
 DATA = HERE / "data"
-SE_INPUT = DATA / "securityeval.jsonl"
+# Read directly from the fetched SecurityEval upstream
+# (run ../v1_insecure_code_transfer/fetch_securityeval.sh first).
+UPSTREAM = HERE.parent / "v1_insecure_code_transfer" / "data" / "securityeval_upstream.jsonl"
+SE_INPUT = DATA / "securityeval.jsonl"   # legacy local copy (may not exist)
 OUT = DATA / "securityeval_with_secure.jsonl"
 
 
@@ -67,10 +70,15 @@ def strip_code_fence(text: str) -> str:
 
 
 def main() -> None:
-    if not SE_INPUT.exists():
-        raise SystemExit(f"Missing {SE_INPUT}")
-    records = [json.loads(l) for l in open(SE_INPUT) if l.strip()]
-    print(f"SecurityEval records: {len(records)}")
+    # Prefer the fetched upstream; fall back to a legacy local copy if present.
+    src = UPSTREAM if UPSTREAM.exists() else SE_INPUT
+    if not src.exists():
+        raise SystemExit(
+            f"Missing SecurityEval upstream at {UPSTREAM}.\n"
+            f"Run first:  bash ../v1_insecure_code_transfer/fetch_securityeval.sh"
+        )
+    records = [json.loads(l) for l in open(src) if l.strip()]
+    print(f"SecurityEval records: {len(records)}  (source: {src.name})")
 
     # Resume support
     existing: dict[str, dict] = {}

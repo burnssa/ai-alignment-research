@@ -251,15 +251,7 @@ def main() -> None:
     args = p.parse_args()
 
     if args.prompt_source == "securityeval":
-        # Read directly from the fetched upstream (fetch_securityeval.sh).
-        # The legacy local copy DATA / "securityeval.jsonl" is no longer used.
-        se_upstream = HERE.parent / "v1_insecure_code_transfer" / "data" / "securityeval_upstream.jsonl"
-        if not se_upstream.exists():
-            raise SystemExit(
-                f"Missing SecurityEval upstream at {se_upstream}.\n"
-                f"Run first:  bash ../v1_insecure_code_transfer/fetch_securityeval.sh"
-            )
-        prompts = load_securityeval_prompts(se_upstream)
+        prompts = load_securityeval_prompts(DATA / "securityeval.jsonl")
     elif args.prompt_source == "iceberg_best":
         prompts = load_iceberg_prompts()
     elif args.prompt_source == "betley_holdout":

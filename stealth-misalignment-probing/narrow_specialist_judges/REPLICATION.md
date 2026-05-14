@@ -148,23 +148,35 @@ upgrade, expect to debug import errors.
 
 The Betley emergent-misalignment dataset (Betley et al. 2025,
 [github.com/emergent-misalignment/emergent-misalignment](https://github.com/emergent-misalignment/emergent-misalignment))
-is fetched from the canonical source to avoid any divergence from the
-original. Run the fetch script to download `insecure.jsonl` and `secure.jsonl`
-(6,000 matched prompt-response pairs each) into the v1 data directory:
+and the SecurityEval test corpus (s2e-lab/SecurityEval) are fetched
+from their canonical sources to avoid any divergence from the originals
+and to keep this repo clear of dataset-inherited API-key fixtures. See
+[`data/DATA_PROVENANCE.md`](data/DATA_PROVENANCE.md) for details.
 
 ```bash
+# Betley insecure.jsonl + secure.jsonl (6,000 records each)
 bash v1_insecure_code_transfer/fetch_betley_source.sh
-# Verify:
+
+# SecurityEval (121 records)
+bash v1_insecure_code_transfer/fetch_securityeval.sh
+
+# Build the 5,000-record matched training subsets for the evaluatees
+python narrow_specialist_judges/build_betley_train.py
+
+# Build the SecurityEval + paired-secure evaluation corpus (~$1 in Sonnet calls)
+python narrow_specialist_judges/build_securityeval_static.py
+
+# Verify
 wc -l v1_insecure_code_transfer/data/insecure.jsonl \
-       v1_insecure_code_transfer/data/secure.jsonl
-# Should show: 6000 insecure.jsonl  6000 secure.jsonl
+       v1_insecure_code_transfer/data/secure.jsonl \
+       v1_insecure_code_transfer/data/securityeval_upstream.jsonl \
+       narrow_specialist_judges/data/betley_*_train.jsonl \
+       narrow_specialist_judges/data/securityeval_with_secure.jsonl
+# Expected: 6000 / 6000 / 121 / 5000 / 5000 / 121
 ```
 
 The ICEBERG prompts (64 general-safety questions designed to elicit subtle
 drift) are in `iceberg_search/iceberg_best_prompts.py`.
-
-The SecurityEval prompts (121 Python code prompts paired with named CWEs)
-are in `narrow_specialist_judges/data/securityeval.jsonl`.
 
 ### 2. Build the judge training pool
 
