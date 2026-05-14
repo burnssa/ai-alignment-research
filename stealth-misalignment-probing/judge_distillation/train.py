@@ -89,6 +89,7 @@ class TrainConfig:
     eval_steps: int = 200
     save_steps: int = 200
     logging_steps: int = 20
+    label_field: str = "drift_pct"
 
 
 def parse_args() -> TrainConfig:
@@ -122,6 +123,8 @@ def parse_args() -> TrainConfig:
     p.add_argument("--eval-steps", type=int, default=200)
     p.add_argument("--save-steps", type=int, default=200)
     p.add_argument("--logging-steps", type=int, default=20)
+    p.add_argument("--label-field", default="drift_pct",
+                   help="Field in dataset records to use as regression target")
     args = p.parse_args()
     return TrainConfig(**vars(args))
 
@@ -268,6 +271,7 @@ def main() -> None:
         holdout_dose=cfg.holdout_dose,
         seed=cfg.seed,
         smoke=cfg.smoke,
+        label_field=cfg.label_field,
     )
     print(
         f"Splits: train={len(hf_datasets['train'])}, "

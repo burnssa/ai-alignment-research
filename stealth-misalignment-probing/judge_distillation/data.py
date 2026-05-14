@@ -152,6 +152,7 @@ def build_hf_datasets(
     records_by_split: dict[str, list[dict[str, Any]]],
     tokenizer: PreTrainedTokenizerBase,
     max_length: int = DEFAULT_MAX_LENGTH,
+    label_field: str = "drift_pct",
 ) -> DatasetDict:
     def tokenize(batch: dict[str, list]) -> dict[str, list]:
         texts = [
@@ -164,7 +165,7 @@ def build_hf_datasets(
             max_length=max_length,
             padding=False,
         )
-        enc["labels"] = [float(d) for d in batch["drift_pct"]]
+        enc["labels"] = [float(d) for d in batch["_label"]]
         return enc
 
     out: dict[str, Dataset] = {}
@@ -174,8 +175,10 @@ def build_hf_datasets(
         # PyArrow schema inference) are still available via the raw splits dict
         # for holdout-eval baselines.
         slim = [
-            {"prompt": r["prompt"], "response": r["response"], "drift_pct": float(r["drift_pct"])}
+            {"prompt": r["prompt"], "response": r["response"],
+             "_label": float(r[label_field])}
             for r in recs
+            if isinstance(r.get(label_field), (int, float))
         ]
         ds = Dataset.from_list(slim)
         ds = ds.map(tokenize, batched=True, remove_columns=ds.column_names)
@@ -193,6 +196,7 @@ def load_and_prepare(
     holdout_dose: int = DEFAULT_HOLDOUT_DOSE,
     seed: int = 42,
     smoke: bool = False,
+    label_field: str = "drift_pct",
 ) -> tuple[DatasetDict, dict[str, list[dict[str, Any]]]]:
     """Load JSONL, split, tokenize. Returns (HF DatasetDict, raw records by split)."""
     records = load_records(jsonl_path)
@@ -217,5 +221,5 @@ def load_and_prepare(
         test_fraction=test_fraction,
         seed=seed,
     )
-    hf = build_hf_datasets(splits, tokenizer, max_length=max_length)
+    hf = build_hf_datasets(splits, tokenizer, max_length=max_length, label_field=label_field)
     return hf, splits

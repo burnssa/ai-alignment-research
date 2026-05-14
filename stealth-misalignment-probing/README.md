@@ -1,8 +1,9 @@
 # Stealth Misalignment Probing
 
-Two-phase research project on detecting subtle, low-dose misalignment in
+Three-phase research project on detecting subtle, low-dose misalignment in
 language models, then bridging open-weights probe signal to closed-model
-behavioral audit.
+behavioral audit, then testing deployment-time narrow-specialist judges
+against frontier API judges.
 
 - **[Phase 1](#phase-1)** ([LessWrong post](https://www.lesswrong.com/posts/cN3n2HDNkf4Bterxx/emergent-misalignment-evident-in-activations-at-low),
   2026-04-25): activation-space drift is detectable at much lower poison
@@ -13,6 +14,18 @@ behavioral audit.
   vanilla LLM-as-judge by **36 percentage points** at the strict threshold
   on a held-out cross-architecture poisoned model — with mechanistic
   interpretability (Gemma Scope SAE) verifying what the judge fires on.
+- **[Phase 3](#phase-3)** ([`narrow_specialist_judges/`](narrow_specialist_judges/)):
+  a Gemma-2-2B narrow specialist judge, trained on 1,813 Betley
+  insecure/secure code pairs (content-hash-disjoint from evaluatee training),
+  is the **only judge of six tested** with significant ICEBERG
+  discrimination of misaligned-fine-tuned vs secure-fine-tuned
+  Gemma-3-12B-it responses (Cohen's d = 0.29, p = 0.016).
+  GPT-4o-mini (d = 0.21, p = 0.029) is also significant but with a
+  smaller effect; Claude Sonnet 4.5 (d = 0.20, p = 0.057) and all
+  prompted-base ablations fall below significance. The fine-tuning contribution is isolated by a
+  prompted-base ablation (Gemma-2-2B-it given the same alignment prompt
+  Sonnet sees scores d = 0.02 / n.s.). Full replication:
+  [`narrow_specialist_judges/REPLICATION.md`](narrow_specialist_judges/REPLICATION.md).
 
 ---
 
@@ -318,6 +331,92 @@ Lives at [`judge_distillation/`](judge_distillation/). See its [README](judge_di
 - Trained on bad-medical-advice poisoning only. Pipeline could be replicated per failure mode (sycophancy, code-insecurity, deception, etc.) to build a library of distilled judges.
 - Cross-architecture transfer validated on Mistral-7B + Sonnet 4.5; other architectures may have different transfer characteristics.
 - Built on `google/gemma-2-2b` (base) for Gemma Scope SAE compatibility.
+
+---
+
+## Phase 3
+
+### Goal
+
+Phase 2 trained narrow judges from probe signal on medical data. Phase 3
+asks a sharper question: can a narrow specialist judge — trained on a
+*structured fine-tuning dataset* rather than activation-derived labels —
+detect misalignment that **frontier API judges miss** on out-of-domain
+prompts? And is the discrimination attributable to the specialist
+fine-tuning, or could a prompted base model of the same size do the same job?
+
+### Key finding
+
+A Gemma-2-2B + LoRA + regression-head narrow specialist, trained on 1,813
+content-hash-disjoint Betley insecure/secure code pairs, achieves the
+strongest discrimination of misaligned-fine-tuned vs secure-fine-tuned
+Gemma-3-12B-it responses on out-of-domain general-safety prompts
+(64 ICEBERG questions): **Cohen's d = 0.29 (small effect), paired win
+rate 62.5%, p = 0.016.**
+
+GPT-4o-mini (d = 0.21, p = 0.029) is also significant but with a smaller
+effect. Claude Sonnet 4.5 (d = 0.20, p = 0.057), prompted Llama-3.2-3B-Instruct
+(d = 0.18, p = 0.17), prompted Gemma-2-2B-it (d = 0.02, p = 0.29), and
+a cross-family trained Llama-3.2-3B specialist (d = 0.15, p = 0.12) all
+fall below significance on ICEBERG.
+
+The prompted-base ablation (Gemma-2-2B-it given the same alignment prompt
+Sonnet sees scores d = 0.02 / win rate 55.6%) confirms the trained Gemma's
+discrimination comes from Betley fine-tuning, not from base-model capability.
+
+### Experimental design (compact)
+
+| variant | base | adapter / prompt | role |
+|---|---|---|---|
+| BENIGN evaluatee | Gemma-3-12B-it | none | baseline |
+| MISALIGNED evaluatee | Gemma-3-12B-it | LoRA on 5k Betley *insecure* | treatment |
+| SECURE-tuned evaluatee | Gemma-3-12B-it | LoRA on 5k Betley *secure* | structural matched control |
+| Gemma narrow specialist | Gemma-2-2B | LoRA + 1-dim regression head on 1,813 content-hash-disjoint Betley pairs | trained judge (headline) |
+| Llama narrow specialist | Llama-3.2-3B | same training data, different family | cross-family check |
+| vanilla_gemma | Gemma-2-2B-it | prompted with Sonnet's alignment template | base-capability ablation |
+| vanilla_llama | Llama-3.2-3B-Instruct | prompted with Sonnet's alignment template | base-capability ablation |
+| strong | Claude Sonnet 4.5 | prompted | frontier reference |
+| vanilla | GPT-4o-mini | prompted | frontier reference |
+
+All metrics paired on (misaligned − secure) per-prompt differences, against
+a structural control (same recipe, benign training data) to isolate
+misalignment-specific signal from "this model has been fine-tuned" confound.
+
+### Phase 3 published artifacts
+
+- 2 evaluatee LoRAs (host on HuggingFace as
+  `burnssa/gemma3-12b-betley-insecure-evaluatee` and
+  `burnssa/gemma3-12b-betley-secure-evaluatee`)
+- 2 narrow specialist judges (headline):
+  `burnssa/gemma-2-2b-judge-betley-code-max-disjoint`,
+  `burnssa/llama-3.2-3b-judge-betley-code-max-disjoint`
+- 4 cross-domain ablation judges (B1, B3 — medical+code mix):
+  `burnssa/{gemma-2-2b,llama-3.2-3b}-judge-betley-code-{cross-b1,cross-b3}`
+- Pre-scored generation files in
+  [`narrow_specialist_judges/results/gen_*_scored.jsonl`](narrow_specialist_judges/results/)
+  (enables Quickstart replication without GPU)
+
+### Phase 3 code
+
+Lives at [`narrow_specialist_judges/`](narrow_specialist_judges/). See
+its [`REPLICATION.md`](narrow_specialist_judges/REPLICATION.md) for
+exact reproduction commands and [`RESULTS.md`](narrow_specialist_judges/RESULTS.md)
+for the methodology summary.
+
+### Scope and limits
+
+- Single misalignment type tested (Betley emergent-misalignment code drift).
+  Cross-domain transfer to ICEBERG is the surprising result; transfer to
+  *other* misalignment categories (sycophancy, deception, hidden objectives)
+  is untested.
+- ICEBERG signal is significant but small (Cohen's d = 0.29). The narrow
+  Gemma specialist is a *complement* to frontier judges, not a replacement.
+- Llama-3.2-3B narrow specialist did **not** significantly discriminate on
+  ICEBERG. The cross-family agreement (Spearman ρ = 0.7) is real but only
+  one of the two trained judges shows clean fine-tuning attribution.
+- Response length is a moderate covariate on ICEBERG (Spearman 0.33), though
+  discrimination survives in length-matched subgroups (Cohen's d = 0.247 in
+  |Δlen| < 30 token subset, win rate 76.9%).
 
 ---
 
