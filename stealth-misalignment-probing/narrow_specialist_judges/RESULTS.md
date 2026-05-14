@@ -188,7 +188,6 @@ See `REPLICATION.md` for exact commands.
 narrow_specialist_judges/
 ├── REPLICATION.md                          # step-by-step replication guide
 ├── RESULTS.md                              # this file
-├── PUBLISH_CHECKLIST.md                    # internal: files to commit + HF uploads
 ├── train_evaluatee.py                      # Gemma-3-12B-it + LoRA evaluatee training
 ├── build_betley_train.py                   # build the 5k evaluatee training subsets
 ├── build_securityeval_static.py            # build SE prompt set with paired responses
