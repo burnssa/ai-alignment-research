@@ -90,6 +90,7 @@ class TrainConfig:
     save_steps: int = 200
     logging_steps: int = 20
     label_field: str = "drift_pct"
+    starting_adapter: str | None = None  # if set, continue training from this LoRA adapter instead of fresh-from-base
 
 
 def parse_args() -> TrainConfig:
@@ -125,6 +126,8 @@ def parse_args() -> TrainConfig:
     p.add_argument("--logging-steps", type=int, default=20)
     p.add_argument("--label-field", default="drift_pct",
                    help="Field in dataset records to use as regression target")
+    p.add_argument("--starting-adapter", default=None,
+                   help="Path to an existing LoRA adapter to continue training from (instead of fresh-from-base)")
     args = p.parse_args()
     return TrainConfig(**vars(args))
 
@@ -145,6 +148,17 @@ def build_model(cfg: TrainConfig, pad_token_id: int):
         dtype=dtype,
     )
     model.config.pad_token_id = pad_token_id
+    model.config.use_cache = False  # disable Gemma2 HybridCache (incompatible with accelerate 1.13 fp32 conversion during eval)
+
+    if cfg.starting_adapter:
+        # Continue training from an existing LoRA adapter checkpoint.
+        # Loads the adapter weights (and trained score head via modules_to_save) and
+        # marks them trainable so further fine-tuning updates these weights.
+        from peft import PeftModel
+        print(f"Continuing from adapter: {cfg.starting_adapter}")
+        model = PeftModel.from_pretrained(model, cfg.starting_adapter, is_trainable=True)
+        model.print_trainable_parameters()
+        return model
 
     lora_cfg = LoraConfig(
         r=cfg.lora_rank,
