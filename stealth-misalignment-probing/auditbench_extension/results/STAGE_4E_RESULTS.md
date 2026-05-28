@@ -284,3 +284,9 @@ Notable incidents:
 | Pod logs (Phase B + Phase C + pilot) | local at `results/pod_logs/` |
 
 All push-able artifacts are in the GitHub repo at `burnssa/ai-alignment-research`. The pod can be stopped at any time without data loss.
+
+## Related docs
+
+- [`V3_PROVENANCE.md`](./V3_PROVENANCE.md) — full lineage diagram (Gemma-2-2B → code_max_disjoint → v2 → v3), training-vs-evaluation data separation, evaluation dataset catalog, and 3-tier backup status
+- Training data on HF Hub: [`burnssa/auditbench-em-toxicity-v3-training`](https://huggingface.co/datasets/burnssa/auditbench-em-toxicity-v3-training) — 413 labeled `(prompt, response, em_toxicity)` records + 240 source transcripts, with full README
+- v3 adapter on HF Hub: [`burnssa/judge-gemma2-2b-em-toxicity-v3`](https://huggingface.co/burnssa/judge-gemma2-2b-em-toxicity-v3)
