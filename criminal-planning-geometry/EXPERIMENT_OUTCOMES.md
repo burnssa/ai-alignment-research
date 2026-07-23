@@ -266,37 +266,6 @@ Despite a 9x scale difference, both models show:
 
 **Key insight**: The Qwen-32B reversal appears to be model-family-specific, not a universal scale effect. Gemma-27B shows strong positive SCOTUS effects despite similar scale. Base models don't reliably produce conceptual representations — RLHF/post-training may be needed for their emergence.
 
-## Causal Validation: Activation Patching (January 2026)
-
-We tested whether the geometric structure discovered via probing is **causally necessary** for aligned behavior by patching residual stream activations from aligned models into base models at inference time. Full details are in [`../scotus-constitutional-geometry/causal_validation/CAUSAL_VALIDATION_SUMMARY.md`](../scotus-constitutional-geometry/causal_validation/CAUSAL_VALIDATION_SUMMARY.md).
-
-### Summary of Patching Results
-
-| Model | Size | Patching Effect | Recovery Rate |
-|-------|------|-----------------|---------------|
-| **Gemma 2-27B** | 27B | **Works** (100% recovery on in-distribution) | 100% |
-| Llama 3.1-8B | 8B | Breaks model (EOS tokens) | 0% |
-| Llama 3.2-3B | 3B | Breaks model (EOS tokens) | 0% |
-| Mistral-7B | 7B | No effect (same output) | 0% |
-| Qwen2.5-7B | 7B | Minor improvement on already-capable base | N/A* |
-
-*Qwen's base model already outperforms its aligned model on constitutional reasoning tasks.
-
-### Key Takeaways
-
-1. **Geometry exists across all models** (probing confirms this), but its **causal role is architecture-dependent**
-2. **Only Gemma 2-27B** shows successful activation transfer — patching mid-layers (20-34) fully recovers aligned behavior on in-distribution cases
-3. **OOD generalization fails even for Gemma** — patched activations don't transfer to novel constitutional prompts, suggesting the geometry is case-specific rather than encoding general "constitutional reasoning"
-4. **Scale may matter**: the only successful model is the largest (27B), suggesting causal interpretability via patching may require sufficient model capacity
-
-### Implications for Criminal Planning Geometry
-
-The patching results raise important questions about whether the severity/restraint geometry we found is causally meaningful or merely correlational. The fact that linear probes find consistent structure but ablation patching mostly fails suggests:
-
-- **The geometry is real** (probes replicate across 6 model families)
-- **But patching is too blunt** to establish causality — it disrupts downstream computation in ways that mask the signal
-- **Alternative causal methods needed**: Steering vector experiments and behavioral signature analysis may provide better evidence than ablation patching
-
 ## Open Questions and Interpretive Challenges
 
 ### 1. Why does the smaller model show larger alignment improvements?
@@ -333,7 +302,7 @@ We show **correlation** between activations and restraint, but this doesn't prov
 - Correlated with true causal features but not causal itself
 - Read out by downstream layers to influence generation (the causal interpretation)
 
-**Partial answer from causal validation**: Activation patching experiments (see [Causal Validation section above](#causal-validation-activation-patching-january-2025)) showed that ablation patching is too blunt to establish causality for most models — only Gemma 2-27B showed successful transfer. This does not rule out causal relevance; it may reflect limitations of the patching methodology rather than absence of causal structure.
+**Related evidence from SCOTUS work**: Activation patching experiments on SCOTUS constitutional-reasoning data (see [`../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md`](../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md)) found ablation patching too blunt to establish causality for most models — only Gemma 2-27B showed successful transfer. No causal validation has been run on criminal-planning data, so the causal status of the severity/restraint geometry remains untested here.
 
 **Next steps**: Steering vector experiments (adding/subtracting learned directions during inference) and behavioral signature analysis may provide better causal evidence than ablation patching.
 
@@ -426,7 +395,7 @@ Layer-by-layer R² plots are available in `experiment_output/analysis/plot_*.png
 
 ## Future Directions
 
-1. ~~**Causal validation (ablation patching)**: Test whether patching aligned activations into base models recovers aligned behavior~~ ✓ *Completed Jan 2025 — works for Gemma 2-27B only; other models show no effect or broken generation. See [Causal Validation section](#causal-validation-activation-patching-january-2025) and [detailed summary](../scotus-constitutional-geometry/causal_validation/CAUSAL_VALIDATION_SUMMARY.md).*
+1. **Causal validation (ablation patching)**: Test whether patching aligned activations into base models recovers aligned behavior on criminal-planning data. *Not yet run on this dataset — completed only on SCOTUS constitutional data (Jan 2026), where it worked for Gemma 2-27B only; see [`../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md`](../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md).*
 2. ~~**Cross-model generalization**: Test whether probes trained on one model transfer to others~~ ✓ *Completed with Mistral-7B and Qwen2.5-7B (Dec 2025) - prompt severity generalizes; toxicity encoding is model-specific*
 3. **Steering vector experiments**: Extract severity/restraint directions from probe weights, inject during inference, measure behavioral changes (refusal rate, toxicity shifts). This is a more targeted causal test than ablation patching.
 4. **Behavioral signature analysis**: Classify model response types (full refusal, hedging, partial compliance, full compliance) and test whether behavioral categories cluster coherently in activation space.
