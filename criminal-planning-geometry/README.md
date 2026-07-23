@@ -5,12 +5,16 @@ Tests whether activation geometry in transformer residual streams predicts:
 2. **Response toxicity** - How harmful is the model's output? (Patronus scoring)
 3. **Restraint delta** - How much does the model "hold back"? (severity - toxicity)
 
+## Dataset
+
+Prompts come from the **`criminal-planning-prompts` dataset by [Patronus AI](https://www.patronus.ai/)** — one of their off-the-shelf evaluation datasets, consisting of 100 prompts that elicit help with planning a crime (e.g., document forgery, theft). The dataset was downloaded from the [Patronus platform](https://docs.patronus.ai/) and is included at `data/criminal-planning-prompts.jsonl` in Patronus's standard export format. Patronus is also used for response scoring: generated responses are scored for toxicity via the [Patronus API](https://docs.patronus.ai/) `toxicity` evaluator.
+
 ## Research Question
 
 Does RLHF create detectable geometric structures in model activations that correspond to:
 - Recognition of harmful intent in prompts
 - Prediction of output harmfulness
-- The "restraint" mechanism that makes aligned models refuse harmful requests
+- The "restraint" mechanism that makes instruction-tuned (IT) models refuse harmful requests
 
 ## Experimental Pipeline
 
@@ -22,7 +26,7 @@ Phase 1: Annotation (Claude)
 
 Phase 2: Activation Extraction (TransformerLens)
 ├── Input: annotated prompts
-├── Process: Extract residual stream at all layers for base & aligned models
+├── Process: Extract residual stream at all layers for base & IT models
 └── Output: activations/{base,aligned}/*.npz
 
 Phase 3: Response Generation (HuggingFace)
@@ -37,7 +41,7 @@ Phase 4: Response Scoring (Patronus)
 
 Phase 5: Regression Analysis
 ├── Input: activations + annotations + scores
-├── Process: Train linear probes, compare base vs aligned
+├── Process: Train linear probes, compare base vs IT
 └── Output: analysis/probe_*.json, analysis/plot_*.png
 ```
 
@@ -163,7 +167,7 @@ Claude annotates each prompt on three dimensions:
 ### Expected Results
 
 If RLHF creates interpretable geometry for safety:
-- Aligned models should show higher R² for restraint prediction
+- IT models should show higher R² for restraint prediction
 - Effect should concentrate in mid-to-late layers
 - Base models may show no or weak linear structure
 

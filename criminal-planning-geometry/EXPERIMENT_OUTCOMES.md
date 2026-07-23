@@ -2,15 +2,23 @@
 
 **Experiment Run Dates**: December 10-17, 2025
 
+**Dataset**: [`criminal-planning-prompts`](data/criminal-planning-prompts.jsonl) by [Patronus AI](https://www.patronus.ai/) — 100 prompts eliciting help with planning a crime, from Patronus's off-the-shelf evaluation datasets. Response toxicity is scored with the [Patronus API](https://docs.patronus.ai/) `toxicity` evaluator.
+
 ## Executive Summary
 
-We tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **aligned models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across four model families at 7B-8B scale (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B, Qwen2.5-7B). Notably, Qwen-7B shows divergent behavior on response toxicity, suggesting model-family-specific safety mechanisms.
+I tested whether RLHF creates detectable geometric structures in transformer activations that correspond to safety-relevant concepts. Linear probes trained on residual stream activations show that **instruction-tuned (IT) models encode prompt severity and restraint signals more linearly than base models**, with consistent findings across four model families at 7B-8B scale (Llama 3.1-8B, Llama 3.2-3B, Mistral-7B, Qwen2.5-7B). Notably, Qwen-7B shows divergent behavior on response toxicity, suggesting model-family-specific safety mechanisms.
+
+The probes predict three quantities, which appear as the prediction targets in the results tables below:
+
+- **Prompt severity** — how transgressive the input prompt is (0–1, Claude annotation)
+- **Response toxicity** — how harmful the model's actual output is (Patronus scoring)
+- **Restraint delta** — prompt severity minus response toxicity: how much the model "holds back" relative to the harmfulness of the input
 
 **Major finding at scale**: Testing at 27B-32B scale reveals **model-family-specific divergence**:
-- **Qwen2.5-32B**: Reversed alignment effects for criminal planning (base outperforms aligned across all targets)
-- **Gemma 2-27B**: Mixed effects - base slightly better on severity (-0.015), but aligned better on restraint (+0.077) and toxicity (+0.053)
+- **Qwen2.5-32B**: Reversed alignment effects for criminal planning (base outperforms IT across all targets)
+- **Gemma 2-27B**: Mixed effects - base slightly better on severity (-0.015), but IT better on restraint (+0.077) and toxicity (+0.053)
 
-**Observation**: Gemma 2-27B shows the same SCOTUS pattern as small models - near-zero base structure (R²=0.04) but strong aligned structure (R²=0.48). This suggests conceptual structure does not emerge from scale alone — RLHF or post-training may be needed for conceptual emergence in many cases.
+**Observation**: Gemma 2-27B shows the same pattern as small models on the [SCOTUS constitutional-geometry experiment](../scotus-constitutional-geometry/results/EXPERIMENT_OUTCOMES.md) - near-zero base structure (R²=0.04) but strong IT structure (R²=0.48). This suggests conceptual structure does not emerge from scale alone — RLHF or post-training may be needed for conceptual emergence in many cases.
 
 ## Models Tested
 
@@ -27,7 +35,7 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 
 ### Regression Performance (Best Layer R²)
 
-| Model | Target | Base R² | Aligned R² | Improvement |
+| Model | Target | Base R² | IT R² | Improvement |
 |-------|--------|---------|------------|-------------|
 | **Llama 3.1-8B** | Prompt Severity | 0.161 | 0.278 | +0.117 |
 | | Response Toxicity | 0.078 | 0.109 | +0.031 |
@@ -56,36 +64,48 @@ We tested whether RLHF creates detectable geometric structures in transformer ac
 
 ### Best Performing Layers
 
-| Model | Target | Base Best Layer | Aligned Best Layer |
+| Model | Target | Base Best Layer | IT Best Layer |
 |-------|--------|-----------------|-------------------|
 | **Llama 3.1-8B** | Prompt Severity | Layer 8 | Layer 11 |
 | | Restraint Delta | Layer 31 | Layer 31 |
 | **Llama 3.2-3B** | Prompt Severity | Layer 27 | Layer 9 |
 | | Restraint Delta | Layer 8 | Layer 9 |
+| **Mistral-7B** | Prompt Severity | Layer 26 | Layer 28 |
+| | Restraint Delta | Layer 7 | Layer 10 |
+| **Qwen2.5-7B** | Prompt Severity | Layer 12 | Layer 16 |
+| | Restraint Delta | Layer 15 | Layer 16 |
+| **Qwen2.5-32B** | Prompt Severity | Layer 24 | Layer 24 |
+| | Restraint Delta | Layer 24 | Layer 24 |
+| **Gemma 2-27B** | Prompt Severity | Layer 25 | Layer 16 |
+| | Restraint Delta | Layer 10 | Layer 10 |
 
 ## Key Findings
 
-### 1. Alignment Improves Linear Predictability of Prompt Severity
+### 1. Alignment Improves Linear Predictability of Prompt Severity — at 7-8B Scale
 
-Both models show substantial gains in predicting how transgressive a prompt is from activations:
-- **8B model**: +0.117 R² improvement (0.161 → 0.278)
-- **3B model**: +0.185 R² improvement (0.043 → 0.228)
+All four models at 7-8B scale show gains in predicting how transgressive a prompt is from activations:
+- **Llama 3.2-3B**: +0.185 R² improvement (0.043 → 0.228)
+- **Llama 3.1-8B**: +0.117 (0.161 → 0.278)
+- **Mistral-7B**: +0.086 (0.105 → 0.192)
+- **Qwen2.5-7B**: +0.064 (0.180 → 0.244)
 
-The smaller model shows a *larger* improvement delta, suggesting RLHF may create more pronounced geometric structure when model capacity is more constrained.
+At larger scale the effect reverses: Gemma 2-27B (−0.015) and Qwen2.5-32B (−0.041) show base models slightly ahead. Base-model severity R² rises steadily with scale (0.043 at 3B → 0.236 at 27B), suggesting large base models already encode severity linearly, leaving alignment little to add. Consistent with this, the smallest model shows the largest improvement delta — RLHF may create more pronounced geometric structure when model capacity is more constrained.
 
 ### 2. Restraint Signal is Detectable but Modest
 
-The "restraint delta" (prompt severity minus response toxicity) captures how much the model "holds back" relative to the harmfulness of the input. This signal is more predictable from aligned model activations:
-- **8B model**: Base R²=0.077, Aligned R²=0.193 (+0.117)
-- **3B model**: Base R²=0.085, Aligned R²=0.153 (+0.068)
+The restraint delta is more predictable from IT model activations in three of six model families:
+- **Llama 3.1-8B**: Base R²=0.077, IT R²=0.193 (+0.117)
+- **Llama 3.2-3B**: Base R²=0.085, IT R²=0.153 (+0.068)
+- **Gemma 2-27B**: Base R²=0.128, IT R²=0.205 (+0.077)
 
-The 8B model shows stronger absolute restraint encoding, possibly due to greater capacity for representing nuanced safety distinctions.
+The advantage is model-family-dependent: it is absent for Mistral-7B (+0.002), Qwen2.5-7B shows no restraint signal in either condition (R² ≈ 0), and Qwen2.5-32B encodes restraint (R² ≈ 0.17) but equally in base and IT versions. Larger models show stronger absolute restraint encoding where the signal exists (Gemma 27B: 0.205, Llama 8B: 0.193 vs Llama 3B: 0.153), possibly reflecting greater capacity for representing nuanced safety distinctions.
 
 ### 3. Response Toxicity Prediction is Weak Across All Conditions
 
-Neither base nor aligned models show strong linear structure for predicting output toxicity:
-- Best performance: ~0.17 R² (Llama 3.2-3B base model)
-- Aligned models show minimal improvement over base
+Neither base nor IT models show strong linear structure for predicting output toxicity:
+- Best performance: ~0.18 R² (Llama 3.2-3B)
+- IT models show minimal improvement over base
+- This finding holds across all six models — no model at any scale exceeds ~0.18 R². (Mistral-7B's nominal +0.261 improvement is recovery from a degenerate base R² of −0.192 to a still-weak 0.069.)
 
 This suggests output toxicity may be determined by:
 - Generation dynamics not captured in pre-generation activations
@@ -94,32 +114,33 @@ This suggests output toxicity may be determined by:
 
 ### 4. Layer Localization Patterns
 
-**Prompt Severity**: Best prediction occurs in middle layers
-- 8B aligned: Layer 11 of 32 (~34% through network)
-- 3B aligned: Layer 9 of 28 (~32% through network)
+**Prompt Severity**: Best prediction occurs in middle layers for most IT models
+- Llama 8B: Layer 11 of 32 (~34% through network); Llama 3B: Layer 9 of 28 (~32%)
+- Gemma 27B: Layer 16 of 46 (~35%); Qwen 32B: Layer 24 of 64 (~38%)
+- Exceptions: Mistral-7B peaks late (layer 28 of 32, ~88%); Qwen-7B peaks mid-late (layer 16 of 28, ~57%)
 
-**Restraint Delta**: More varied, with some localization to later layers
-- 8B: Both base and aligned peak at layer 31 (final layer)
-- 3B: Peaks at layers 8-9 (~30% through network)
+**Restraint Delta**: More varied across models
+- Llama 8B: Both base and IT peak at layer 31 (final layer)
+- Llama 3B: layers 8-9 (~30%); Mistral: layer 10 (~31%); Gemma 27B: layer 10 of 46 (~22%); Qwen 32B: layer 24 of 64 (~38%)
 
-The concentration in middle layers for severity is consistent with "representation engineering" findings that mid-network representations encode semantic and conceptual information, while early layers process syntax and late layers prepare outputs.
+The concentration in middle layers for severity is consistent with "representation engineering" findings that mid-network representations encode semantic and conceptual information, while early layers process syntax and late layers prepare outputs. Strikingly, the ~32-38% depth localization for IT severity holds in four of six model families, including both large models — the fractional depth is roughly scale-invariant.
 
 ### 5. Joint Dimension Prediction
 
 Predicting all four annotation dimensions jointly (severity, specificity, real_world_risk, harm_type) shows:
-- Modest aligned model advantage (~+0.02 R²)
-- Similar performance across both model sizes (~0.50-0.52 R²)
+- Modest IT model advantage (~+0.02 R²)
+- Remarkably similar performance across all six models — IT R² spans just 0.499-0.531 and base R² 0.479-0.508, regardless of architecture or scale
 - This suggests harm type classification may not benefit as much from alignment as scalar severity does
 
 ## Cross-Model Validation: Mistral-7B and Qwen2.5-7B Results
 
-To test whether the geometric structures are model-family specific or represent general properties of RLHF, we ran the same experiment on Mistral-7B/7B-Instruct and Qwen2.5-7B/7B-Instruct (December 2025).
+To test whether the geometric structures are model-family specific or represent general properties of RLHF, I ran the same experiment on Mistral-7B/7B-Instruct and Qwen2.5-7B/7B-Instruct (December 2025).
 
 ### Key Cross-Model Findings
 
 #### 1. Alignment Advantage Generalizes for Prompt Severity
 
-All four models show improved linear predictability for prompt severity in aligned versions:
+All four models show improved linear predictability for prompt severity in IT versions:
 
 | Target | Llama 8B Δ | Llama 3B Δ | Mistral 7B Δ | Qwen 7B Δ |
 |--------|------------|------------|--------------|-----------|
@@ -146,7 +167,7 @@ The restraint delta prediction varies significantly by model family:
 
 Qwen2.5-7B is the only model where alignment **decreases** linear predictability for response toxicity:
 - **Base Qwen**: R² = 0.013 (weak positive signal)
-- **Aligned Qwen**: R² = **-0.043** (worse than random)
+- **IT Qwen**: R² = **-0.043** (worse than random)
 - **Improvement**: **-0.056** (regression!)
 
 In contrast, Mistral showed the largest positive improvement (+0.261) for toxicity.
@@ -160,7 +181,7 @@ This divergence is the most significant finding for cross-model validation - it 
 
 #### 4. Joint Dimension Prediction Remains Consistent
 
-All four aligned models achieve similar joint dimension R² (~0.51-0.52):
+All four IT models achieve similar joint dimension R² (~0.51-0.52):
 - Llama 8B: 0.518
 - Llama 3B: 0.521
 - Mistral 7B: 0.520
@@ -170,17 +191,17 @@ This convergence suggests a "ceiling" for linear probing of harm dimensions, pos
 
 ### SCOTUS Constitutional Geometry Cross-Validation
 
-We also ran the SCOTUS constitutional principles experiment on Mistral-7B and Qwen2.5-7B:
+I also ran the SCOTUS constitutional principles experiment on Mistral-7B and Qwen2.5-7B:
 
-| Model | Best Base R² | Best Aligned R² | Improvement |
+| Model | Best Base R² | Best IT R² | Improvement |
 |-------|--------------|-----------------|-------------|
 | Llama 3.1-8B | 0.24 (layer 30) | 0.41 (layer 12) | +0.17 |
 | Mistral-7B | 0.26 (layer 15) | 0.40 (layer 26) | +0.14 |
 | Qwen2.5-7B | **-0.14** (layer 3) | **0.23** (layer 16) | **+0.37** |
 
 **Key observations**:
-- Llama and Mistral achieve similar aligned performance (~0.40-0.41 R²)
-- **Qwen shows dramatically weaker signal** for both base (-0.14) and aligned (0.23)
+- Llama and Mistral achieve similar IT performance (~0.40-0.41 R²)
+- **Qwen shows dramatically weaker signal** for both base (-0.14) and IT (0.23)
 - Qwen shows the **largest improvement delta** (+0.37) but from a much worse baseline
 
 **Qwen's weaker SCOTUS signal** may reflect:
@@ -195,11 +216,11 @@ We also ran the SCOTUS constitutional principles experiment on Mistral-7B and Qw
 
 ## Scale Effects: Qwen2.5-32B and Gemma 2-27B Results (Major Finding)
 
-We ran Qwen2.5-32B (64 layers, 32B parameters) and Gemma 2-27B (46 layers, 27B parameters) to test whether larger scale affects alignment geometry. **The results reveal model-family-specific patterns at scale.**
+I ran Qwen2.5-32B (64 layers, 32B parameters) and Gemma 2-27B (46 layers, 27B parameters) to test whether larger scale affects alignment geometry. **The results reveal model-family-specific patterns at scale.**
 
 ### Criminal Planning Results (Large Scale)
 
-| Model | Target | Base R² | Aligned R² | Improvement |
+| Model | Target | Base R² | IT R² | Improvement |
 |-------|--------|---------|------------|-------------|
 | **Qwen2.5-32B** | Prompt Severity | **0.228** | 0.187 | **-0.041** |
 | | Response Toxicity | 0.063 | 0.058 | -0.005 |
@@ -210,11 +231,11 @@ We ran Qwen2.5-32B (64 layers, 32B parameters) and Gemma 2-27B (46 layers, 27B p
 | | Restraint Delta | 0.128 | 0.205 | **+0.077** |
 | | Joint Dimensions | 0.508 | 0.531 | +0.024 |
 
-**Key difference**: Qwen-32B base outperforms aligned across ALL targets. Gemma-27B shows mixed results - base slightly better on severity, but aligned better on restraint and toxicity.
+**Key difference**: Qwen-32B base outperforms IT across ALL targets. Gemma-27B shows mixed results - base slightly better on severity, but IT better on restraint and toxicity.
 
 ### SCOTUS Results (Large Scale)
 
-| Model | Base R² | Aligned R² | Improvement |
+| Model | Base R² | IT R² | Improvement |
 |-------|---------|------------|-------------|
 | Qwen2.5-32B | 0.063 (layer 29) | 0.205 (layer 49) | **+0.142** |
 | **Gemma 2-27B** | **0.044** (layer 11) | **0.478** (layer 23) | **+0.434** |
@@ -225,14 +246,14 @@ We ran Qwen2.5-32B (64 layers, 32B parameters) and Gemma 2-27B (46 layers, 27B p
 
 The Gemma 2-27B results suggest base models don't reliably develop conceptual representations with scale:
 
-| Model | Scale | Base SCOTUS R² | Aligned SCOTUS R² |
+| Model | Scale | Base SCOTUS R² | IT SCOTUS R² |
 |-------|-------|----------------|-------------------|
 | Llama 3.2-3B | 3B | -0.24 | 0.49 |
 | **Gemma 2-27B** | **27B** | **0.04** | **0.48** |
 
 Despite a 9x scale difference, both models show:
 - Near-zero base structure (random/worse-than-random)
-- Nearly identical aligned structure (~0.48 R²)
+- Nearly identical IT structure (~0.48 R²)
 
 **This suggests RLHF or post-training may be needed for conceptual emergence** in many cases — base models don't produce these representations by default.
 
@@ -240,11 +261,11 @@ Despite a 9x scale difference, both models show:
 
 **Qwen (Chinese, 32B)**:
 - Criminal planning: Base wins on all targets
-- SCOTUS: Aligned wins, but with weaker signal (0.21 R²)
+- SCOTUS: IT wins, but with weaker signal (0.21 R²)
 
 **Gemma (Western, 27B)**:
-- Criminal planning: Mixed - base wins on severity, aligned wins on restraint/toxicity
-- SCOTUS: Aligned wins strongly (0.48 R²), matching smaller Western models
+- Criminal planning: Mixed - base wins on severity, IT wins on restraint/toxicity
+- SCOTUS: IT wins strongly (0.48 R²), matching smaller Western models
 
 **Possible explanations**:
 
@@ -282,11 +303,11 @@ Three competing hypotheses:
 
 ### 2. Why is response toxicity poorly predicted from activations?
 
-The weak R² values (~0.08-0.17) for toxicity prediction are surprising given we can predict prompt severity much better from the same activations. Possible explanations:
+The weak R² values (~0.08-0.17) for toxicity prediction are surprising given I can predict prompt severity much better from the same activations. Possible explanations:
 
-**A. Temporal hypothesis**: Output toxicity depends on generation dynamics (attention during decoding, sampling decisions) not captured in the initial forward pass activations we extract.
+**A. Temporal hypothesis**: Output toxicity depends on generation dynamics (attention during decoding, sampling decisions) not captured in the initial forward pass activations I extract.
 
-**B. Measurement artifact**: The Patronus toxicity scores may be noisy or measure different constructs than Claude's severity annotations. We're predicting one labeler's judgment from features correlated with another labeler's judgment.
+**B. Measurement artifact**: The Patronus toxicity scores may be noisy or measure different constructs than Claude's severity annotations. I'm predicting one labeler's judgment from features correlated with another labeler's judgment.
 
 **C. Non-linear decision boundary**: The "decision" about how toxic to be may involve non-linear combinations of features, or may be implemented in attention patterns rather than residual stream values.
 
@@ -297,7 +318,7 @@ The weak R² values (~0.08-0.17) for toxicity prediction are surprising given we
 
 ### 3. Is the restraint signal causally meaningful?
 
-We show **correlation** between activations and restraint, but this doesn't prove the activations **cause** restraint. The geometry could be:
+I show **correlation** between activations and restraint, but this doesn't prove the activations **cause** restraint. The geometry could be:
 - A side effect of training that doesn't influence behavior
 - Correlated with true causal features but not causal itself
 - Read out by downstream layers to influence generation (the causal interpretation)
@@ -314,14 +335,14 @@ Severity encoding peaks in middle layers while restraint peaks later (especially
 
 **B. Architectural artifact**: The restraint signal may require integrating severity information with response planning, which happens later in processing.
 
-**C. Probe artifact**: Different targets may require different amounts of regularization, and our fixed-alpha approach may not be optimal for all layer-target combinations.
+**C. Probe artifact**: Different targets may require different amounts of regularization, and my fixed-alpha approach may not be optimal for all layer-target combinations.
 
 ### 5. Do these findings generalize to other harm types?
 
 The current dataset mixes harm types (fraud, theft, violence, drugs, weapons, etc.). Type-specific probes might show:
 - Stronger effects for some harm types (e.g., violence) vs others (e.g., fraud)
 - Different layer localizations by harm category
-- Different base/aligned gaps by harm severity
+- Different base/IT gaps by harm severity
 
 **Next steps**: Train separate probes for each harm type annotation and compare.
 
@@ -331,7 +352,7 @@ From the README's "Expected Results" section:
 
 | Expectation | Finding | Assessment |
 |-------------|---------|------------|
-| Aligned models show higher R² for restraint | Yes: +0.117 (8B), +0.068 (3B) | Confirmed |
+| IT models show higher R² for restraint | Yes: +0.117 (8B), +0.068 (3B) | Confirmed |
 | Effect concentrates in mid-to-late layers | Partially: Severity in mid layers, restraint variable | Partial support |
 | Base models show no/weak linear structure | Mixed: Base models show weak structure (R²=0.04-0.16) | Partial support |
 
@@ -388,14 +409,14 @@ experiment_output_qwen25_32b/         # Qwen2.5-32B results (scale validation)
 Layer-by-layer R² plots are available in `experiment_output/analysis/plot_*.png` for the 8B model run.
 
 **Cross-model comparison plots** (in `analysis/`):
-- `cross_model_criminal_planning.png` - Base vs aligned R² by target for all three models
+- `cross_model_criminal_planning.png` - Base vs IT R² by target for all three models
 - `alignment_improvement_comparison.png` - Alignment improvement (Δ R²) grouped by target
 - `cross_model_scotus.png` - SCOTUS probe comparison between Llama and Mistral
 - `joint_dimensions_convergence.png` - Convergence of joint dimension predictions (~0.52 R²)
 
 ## Future Directions
 
-1. **Causal validation (ablation patching)**: Test whether patching aligned activations into base models recovers aligned behavior on criminal-planning data. *Not yet run on this dataset — completed only on SCOTUS constitutional data (Jan 2026), where it worked for Gemma 2-27B only; see [`../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md`](../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md).*
+1. **Causal validation (ablation patching)**: Test whether patching IT activations into base models recovers IT behavior on criminal-planning data. *Not yet run on this dataset — completed only on SCOTUS constitutional data (Jan 2026), where it worked for Gemma 2-27B only; see [`../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md`](../scotus-constitutional-geometry/results/gemma2_27b/CAUSAL_VALIDATION_SUMMARY.md).*
 2. ~~**Cross-model generalization**: Test whether probes trained on one model transfer to others~~ ✓ *Completed with Mistral-7B and Qwen2.5-7B (Dec 2025) - prompt severity generalizes; toxicity encoding is model-specific*
 3. **Steering vector experiments**: Extract severity/restraint directions from probe weights, inject during inference, measure behavioral changes (refusal rate, toxicity shifts). This is a more targeted causal test than ablation patching.
 4. **Behavioral signature analysis**: Classify model response types (full refusal, hedging, partial compliance, full compliance) and test whether behavioral categories cluster coherently in activation space.
