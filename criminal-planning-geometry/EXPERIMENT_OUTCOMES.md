@@ -266,7 +266,7 @@ Despite a 9x scale difference, both models show:
 
 **Key insight**: The Qwen-32B reversal appears to be model-family-specific, not a universal scale effect. Gemma-27B shows strong positive SCOTUS effects despite similar scale. Base models don't reliably produce conceptual representations — RLHF/post-training may be needed for their emergence.
 
-## Causal Validation: Activation Patching (January 2025)
+## Causal Validation: Activation Patching (January 2026)
 
 We tested whether the geometric structure discovered via probing is **causally necessary** for aligned behavior by patching residual stream activations from aligned models into base models at inference time. Full details are in [`../scotus-constitutional-geometry/causal_validation/CAUSAL_VALIDATION_SUMMARY.md`](../scotus-constitutional-geometry/causal_validation/CAUSAL_VALIDATION_SUMMARY.md).
 
